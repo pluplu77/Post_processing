@@ -2,12 +2,12 @@
 # -*- coding: utf-8 -*-
 
 # =============================================================================
-# wikidata_invalid_case_pipeline_v2.py
+# wikidata_invalid_case_pipeline_v3.py
 # =============================================================================
 #
 # PURPOSE
 # -------
-# This script reads an input CSV and produces an output CSV with exactly these
+# This script reads an input CSV and outputs a refined CSV with exactly these
 # columns:
 #
 #   question
@@ -18,81 +18,58 @@
 #   gold_answer_entities
 #   property_number
 #   property_name
+#   connection_path
 #   formatted
 #
-# The script performs:
-#
-# 1. Entity extraction / linking for question and gold_answer
-# 2. Live Wikidata existence checking for extracted entities
-# 3. Property-connection checking between question-side entities and
-#    gold-answer-side entities
+# MAIN CAPABILITIES
+# -----------------
+# 1. Extract question-side entities, primarily from `formatted`
+# 2. Extract gold-answer-side entities from `gold_answer`
+# 3. Verify QID existence live in Wikidata
+# 4. Check whether question entities can connect to answer entities
+# 5. Return:
+#      - first-hop property count
+#      - first-hop property names
+#      - one or more actual graph paths
 #
 #
 # IMPORTANT CHANGE IN THIS VERSION
 # --------------------------------
-# We now use the `formatted` field as the FIRST source of entity extraction.
+# Previous versions only returned the first-hop property/properties on the
+# question entity that can eventually reach the answer entity.
 #
-# Why?
-# ----
-# In your data, `formatted` often already contains the intended Wikidata entities
-# explicitly as:
-#   - wd:Q...
-#   - entity labels with QIDs
-#   - "Using entities" traces
+# This version also returns the ACTUAL PATH, for example:
 #
-# This is much more reliable than free-text NER for difficult titles like:
-#   "This Is for the Lover in You"
-#
-# So the new extraction order is:
-#
-#   Question-side entities:
-#     1) extract QIDs from formatted
-#     2) if none found, extract explicit QIDs from question
-#     3) if none found, use live Wikidata search on question text
-#
-#   Gold-answer-side entities:
-#     1) extract explicit QIDs from gold_answer
-#     2) otherwise use live Wikidata search on gold_answer
-#
-# NOTE:
-# -----
-# The formatted field may contain several QIDs. In this version, we treat those
-# formatted QIDs primarily as question-side entities, because in your dataset
-# formatted usually encodes the Wikidata entities used to answer the question.
+#   This Is for the Lover in You (Q7786031)
+#   -> followed by (P156)
+#   -> Every Time I Close My Eyes (Q5417613)
+#   -> performer (P175)
+#   -> Babyface (Q344983)
 #
 #
-# CONNECTION LOGIC
-# ----------------
-# We do NOT return arbitrary properties from arbitrary paths.
-#
-# Instead, for each pair:
+# PATH INTERPRETATION
+# -------------------
+# For each pair:
 #     question_entity -> ... -> gold_answer_entity
 #
-# we return the DISTINCT FIRST-HOP properties on the question entity that can
-# reach the answer entity within MAX_HOPS.
+# we search outward paths up to MAX_HOPS and return:
+#
+#   - the first-hop property p1
+#   - the full path edges [(node1, pid1, node2), (node2, pid2, node3), ...]
+#
+# The `property_name` column still contains DISTINCT FIRST-HOP properties,
+# because that matches your prior output design.
+#
+# The new `connection_path` column contains the actual concrete path(s).
 #
 #
 # TAXONOMY RULES
 # --------------
 # - "missing node (entity)"
-#     assigned when:
-#       * question-side entity could not be found / linked
-#       * or gold-answer-side entity could not be found / linked
-#       * except for purely numeric-like gold answers
+#     if required entities cannot be linked / do not exist
 #
 # - "missing edge (triplet)"
-#     assigned when:
-#       * both sides have valid entities
-#       * but no connecting property is found
-#
-#
-# NUMERICAL ANSWERS
-# -----------------
-# If gold_answer looks numeric-like, we do not force entity linking.
-# In that case:
-#   - gold_answer_entities stays empty
-#   - no missing-node label is assigned purely because of that
-#   - no edge check is attempted without answer entities
+#     if both sides have entities but no connecting path is found
 #
 #
 # DEPENDENCIES
@@ -102,9 +79,9 @@
 #
 # HOW TO RUN
 # ----------
-# 1. Change INPUT_CSV_PATH and OUTPUT_CSV_PATH below if needed.
+# 1. Edit INPUT_CSV_PATH and OUTPUT_CSV_PATH if needed.
 # 2. Run:
-#       python wikidata_invalid_case_pipeline_v2.py
+#       python wikidata_invalid_case_pipeline_v3.py
 #
 # =============================================================================
 
@@ -113,7 +90,7 @@ from __future__ import annotations
 import math
 import re
 import time
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 import pandas as pd
 import requests
@@ -124,26 +101,19 @@ from tqdm import tqdm
 # CONFIGURATION
 # =============================================================================
 
-# Input and output paths. Change if needed.
 INPUT_CSV_PATH = "all_invalid_cases_first20.csv"
-OUTPUT_CSV_PATH = "wikidata_pipeline_output.csv"
+OUTPUT_CSV_PATH = "wikidata_pipeline_output_v3.csv"
 
-# Language for Wikidata label lookup.
 LABEL_LANGUAGE = "en"
+MAX_HOPS = 3
 
-# Maximum hops allowed for connection search.
-MAX_HOPS = 2
-
-# HTTP config
-USER_AGENT = "WikidataInvalidCasePipelineV2/1.0 (Python requests; contact: your-email@example.com)"
+USER_AGENT = "WikidataInvalidCasePipelineV3/1.0 (Python requests; contact: your-email@example.com)"
 HEADERS_JSON = {"User-Agent": USER_AGENT, "Accept": "application/json"}
 
-# Wikidata endpoints
 WBSEARCH_API = "https://www.wikidata.org/w/api.php"
 ENTITY_DATA_URL = "https://www.wikidata.org/wiki/Special:EntityData/{}.json"
 SPARQL_ENDPOINT = "https://query.wikidata.org/sparql"
 
-# Timeouts / retries
 HTTP_TIMEOUT = 25
 RETRIES = 2
 
@@ -164,14 +134,14 @@ def is_missing_value(x: Any) -> bool:
 
 
 def normalize_text(x: Any) -> str:
-    """Convert arbitrary value to clean string; missing -> empty string."""
+    """Convert arbitrary value to a clean string."""
     if is_missing_value(x):
         return ""
     return str(x).strip()
 
 
 def dedupe_preserve_order(items: List[str]) -> List[str]:
-    """Remove duplicates while preserving order."""
+    """Remove duplicates from a list while preserving order."""
     seen = set()
     out = []
     for x in items:
@@ -183,15 +153,9 @@ def dedupe_preserve_order(items: List[str]) -> List[str]:
 
 def looks_numeric_like(text: str) -> bool:
     """
-    Heuristic detector for numeric / date / quantity-like answers.
+    Heuristic detector for numeric/date/quantity-like answers.
 
-    Examples considered numeric-like:
-      6
-      2019
-      3.14
-      12 km
-      5 goals
-      January 23, 1998
+    These are not forced into entity-linking failure.
     """
     t = text.strip().lower()
     if not t:
@@ -213,7 +177,7 @@ def looks_numeric_like(text: str) -> bool:
 
 
 # =============================================================================
-# LIVE HTTP / WIKIDATA HELPERS
+# HTTP / WIKIDATA HELPERS
 # =============================================================================
 
 def safe_get(
@@ -224,9 +188,7 @@ def safe_get(
     timeout: int = HTTP_TIMEOUT,
     retries: int = RETRIES,
 ) -> requests.Response:
-    """
-    Robust GET helper with retries.
-    """
+    """HTTP GET helper with retry logic."""
     last_exc = None
     for attempt in range(retries + 1):
         try:
@@ -243,9 +205,7 @@ def safe_get(
 
 
 def qid_exists(qid: str, existence_cache: Dict[str, bool]) -> bool:
-    """
-    Live existence check for a QID using Wikidata EntityData endpoint.
-    """
+    """Live existence check for a QID."""
     if qid in existence_cache:
         return existence_cache[qid]
 
@@ -261,9 +221,7 @@ def qid_exists(qid: str, existence_cache: Dict[str, bool]) -> bool:
 
 
 def wbsearch_entities(search_text: str, limit: int = 5, language: str = LABEL_LANGUAGE) -> List[Dict[str, Any]]:
-    """
-    Live Wikidata search using wbsearchentities.
-    """
+    """Live Wikidata search using wbsearchentities."""
     params = {
         "action": "wbsearchentities",
         "format": "json",
@@ -280,8 +238,8 @@ def wbsearch_entities(search_text: str, limit: int = 5, language: str = LABEL_LA
 
 def get_label_for_id(entity_id: str, label_cache: Dict[str, str], language: str = LABEL_LANGUAGE) -> str:
     """
-    Live label lookup for QID or PID using wbgetentities.
-    Returns raw ID if label lookup fails.
+    Get human-readable label for QID or PID.
+    Returns raw ID if lookup fails.
     """
     if entity_id in label_cache:
         return label_cache[entity_id]
@@ -306,15 +264,13 @@ def get_label_for_id(entity_id: str, label_cache: Dict[str, str], language: str 
 
 
 def format_qid_with_label(qid: str, label_cache: Dict[str, str]) -> str:
-    """Format QID as name (QID)."""
-    label = get_label_for_id(qid, label_cache)
-    return f"{label} ({qid})"
+    """Format entity as name (QID)."""
+    return f"{get_label_for_id(qid, label_cache)} ({qid})"
 
 
 def format_pid_with_label(pid: str, label_cache: Dict[str, str]) -> str:
-    """Format PID as property label (PID)."""
-    label = get_label_for_id(pid, label_cache)
-    return f"{label} ({pid})"
+    """Format property as label (PID)."""
+    return f"{get_label_for_id(pid, label_cache)} ({pid})"
 
 
 # =============================================================================
@@ -322,40 +278,19 @@ def format_pid_with_label(pid: str, label_cache: Dict[str, str]) -> str:
 # =============================================================================
 
 def extract_explicit_qids(text: str) -> List[str]:
-    """
-    Extract explicit QIDs from text.
-
-    Examples:
-      Q567
-      Angela Merkel (Q567)
-      wd:Q1055
-    """
+    """Extract explicit QIDs from text."""
     if not text:
         return []
     matches = re.findall(r"\bQ[1-9]\d*\b", text, flags=re.IGNORECASE)
-    matches = [m.upper() for m in matches]
-    return dedupe_preserve_order(matches)
-
-
-def extract_explicit_pids(text: str) -> List[str]:
-    """
-    Extract explicit PIDs from text, if needed for debugging or future use.
-
-    Examples:
-      P19
-      wd:P19
-    """
-    if not text:
-        return []
-    matches = re.findall(r"\bP[1-9]\d*\b", text, flags=re.IGNORECASE)
-    matches = [m.upper() for m in matches]
-    return dedupe_preserve_order(matches)
+    return dedupe_preserve_order([m.upper() for m in matches])
 
 
 def extract_qids_from_formatted(formatted: str, existence_cache: Dict[str, bool]) -> List[str]:
     """
-    Extract all explicit QIDs from the formatted field, keep only those that exist.
-    This is the PRIMARY extraction source in this version.
+    Extract QIDs from formatted first.
+
+    This is our primary question-side source because formatted often already
+    encodes the intended Wikidata entities.
     """
     qids = extract_explicit_qids(formatted)
     qids = [qid for qid in qids if qid_exists(qid, existence_cache)]
@@ -363,32 +298,20 @@ def extract_qids_from_formatted(formatted: str, existence_cache: Dict[str, bool]
 
 
 # =============================================================================
-# HEURISTIC SURFACE EXTRACTION FOR LIVE SEARCH FALLBACK
+# LIVE SEARCH FALLBACK
 # =============================================================================
 
 def extract_candidate_question_surfaces(question: str) -> List[str]:
     """
-    Heuristic candidate extraction from the question for fallback live search.
-
-    This is only used if formatted gives no QIDs.
-
-    Strategy:
-      - keep the full question as a candidate
-      - strip leading WH wording
-      - split on common relation phrases
-      - preserve longer spans
+    Heuristic question-surface extraction for live search fallback.
     """
     q = question.strip()
     if not q:
         return []
 
     q = re.sub(r"\s+", " ", q)
-    candidates: List[str] = []
+    candidates: List[str] = [q.strip(" ?")]
 
-    # Full question sometimes helps when titles are embedded.
-    candidates.append(q.strip(" ?"))
-
-    # Remove leading WH template.
     q_lower = q.lower()
     prefixes = [
         r"^who\s+",
@@ -414,19 +337,9 @@ def extract_candidate_question_surfaces(question: str) -> List[str]:
     if stripped:
         candidates.append(stripped)
 
-    # Split on some common relational patterns.
     split_phrases = [
-        " of ",
-        " in ",
-        " on ",
-        " for ",
-        " from ",
-        " by ",
-        " where ",
-        " that ",
-        " which ",
-        " who ",
-        " whose ",
+        " of ", " in ", " on ", " for ", " from ", " by ",
+        " where ", " that ", " which ", " who ", " whose "
     ]
 
     pieces = [stripped]
@@ -447,10 +360,6 @@ def extract_candidate_question_surfaces(question: str) -> List[str]:
 def split_answer_into_candidate_surfaces(gold_answer: str) -> List[str]:
     """
     Split gold_answer into candidate entity surfaces.
-
-    Examples:
-      'Ellen White, Alex Morgan, and Megan Rapinoe'
-      -> ['Ellen White', 'Alex Morgan', 'Megan Rapinoe', full original string]
     """
     t = gold_answer.strip()
     if not t:
@@ -469,12 +378,7 @@ def split_answer_into_candidate_surfaces(gold_answer: str) -> List[str]:
 
 def pick_best_qid_for_surface(surface: str, existence_cache: Dict[str, bool]) -> Optional[str]:
     """
-    Link a surface string to Wikidata via live search.
-
-    Policy:
-      1) if explicit QID exists in the surface, use it
-      2) else live-search Wikidata
-      3) take the first candidate that exists
+    Link a free-text surface to Wikidata using live search.
     """
     surface = surface.strip()
     if not surface:
@@ -499,26 +403,20 @@ def pick_best_qid_for_surface(surface: str, existence_cache: Dict[str, bool]) ->
 
 
 # =============================================================================
-# ENTITY EXTRACTION LOGIC
+# ENTITY EXTRACTION
 # =============================================================================
 
 def extract_question_entities(question: str, formatted: str, existence_cache: Dict[str, bool]) -> List[str]:
     """
-    Extract question-side entities.
-
-    NEW PRIORITY ORDER:
-      1) extract all QIDs from formatted first
-      2) if none, extract explicit QIDs from question
-      3) if none, use live search on question candidate surfaces
-
-    This is the main improvement over the previous version.
+    Question-side extraction order:
+      1) formatted QIDs first
+      2) explicit QIDs in question
+      3) live search fallback
     """
-    # 1) Strongest source now: formatted.
     formatted_qids = extract_qids_from_formatted(formatted, existence_cache)
     if formatted_qids:
         return formatted_qids
 
-    # 2) Explicit QIDs inside question text.
     explicit_question_qids = [
         qid for qid in extract_explicit_qids(question)
         if qid_exists(qid, existence_cache)
@@ -526,7 +424,6 @@ def extract_question_entities(question: str, formatted: str, existence_cache: Di
     if explicit_question_qids:
         return dedupe_preserve_order(explicit_question_qids)
 
-    # 3) Fallback to live search from question surfaces.
     out_qids: List[str] = []
     for cand in extract_candidate_question_surfaces(question):
         qid = pick_best_qid_for_surface(cand, existence_cache)
@@ -538,12 +435,10 @@ def extract_question_entities(question: str, formatted: str, existence_cache: Di
 
 def extract_gold_answer_entities(gold_answer: str, existence_cache: Dict[str, bool]) -> List[str]:
     """
-    Extract gold-answer-side entities.
-
-    Logic:
-      1) if numeric-like -> return []
-      2) explicit QIDs in gold_answer
-      3) live search over answer candidate surfaces
+    Gold-answer extraction:
+      1) skip if numeric-like
+      2) explicit QIDs
+      3) live search fallback
     """
     gold_answer = gold_answer.strip()
     if not gold_answer:
@@ -554,12 +449,10 @@ def extract_gold_answer_entities(gold_answer: str, existence_cache: Dict[str, bo
 
     out_qids: List[str] = []
 
-    # Explicit QIDs in answer
     for qid in extract_explicit_qids(gold_answer):
         if qid_exists(qid, existence_cache):
             out_qids.append(qid)
 
-    # Live search fallback
     for cand in split_answer_into_candidate_surfaces(gold_answer):
         qid = pick_best_qid_for_surface(cand, existence_cache)
         if qid:
@@ -569,13 +462,11 @@ def extract_gold_answer_entities(gold_answer: str, existence_cache: Dict[str, bo
 
 
 # =============================================================================
-# CONNECTION CHECK
+# PATH SEARCH
 # =============================================================================
 
 def run_sparql(query: str) -> Dict[str, Any]:
-    """
-    Execute a live SPARQL query against Wikidata.
-    """
+    """Execute a live SPARQL query."""
     resp = safe_get(
         SPARQL_ENDPOINT,
         params={"query": query, "format": "json"},
@@ -586,75 +477,127 @@ def run_sparql(query: str) -> Dict[str, Any]:
     return resp.json()
 
 
-def build_first_hop_property_query(qid1: str, qid2: str, max_hops: int) -> str:
+def build_exact_path_query(qid1: str, qid2: str, hops: int) -> str:
     """
-    Build a SPARQL query that returns DISTINCT first-hop properties from qid1
-    that can reach qid2 within max_hops.
+    Build a SPARQL query that searches for ONE outward path of exactly `hops`
+    edges from qid1 to qid2.
 
-    Returned properties are only the FIRST edge properties on qid1.
+    Example for hops=2:
+      wd:Q1 ?p1 ?n1 .
+      ?n1 ?p2 wd:Q2 .
+
+    Returns:
+      variables ?p1, ?n1, ?p2
+    """
+    if hops < 1:
+        raise ValueError("hops must be >= 1")
+
+    lines = ["SELECT * WHERE {"]
+
+    if hops == 1:
+        lines.append(f"  wd:{qid1} ?p1 wd:{qid2} .")
+        lines.append('  FILTER(STRSTARTS(STR(?p1), "http://www.wikidata.org/prop/direct/"))')
+        lines.append("}")
+        lines.append("LIMIT 1")
+        return "\n".join(lines)
+
+    lines.append(f"  wd:{qid1} ?p1 ?n1 .")
+    lines.append('  FILTER(STRSTARTS(STR(?p1), "http://www.wikidata.org/prop/direct/"))')
+    lines.append('  FILTER(STRSTARTS(STR(?n1), "http://www.wikidata.org/entity/Q"))')
+
+    for i in range(1, hops - 1):
+        lines.append(f"  ?n{i} ?p{i+1} ?n{i+1} .")
+        lines.append(f'  FILTER(STRSTARTS(STR(?p{i+1}), "http://www.wikidata.org/prop/direct/"))')
+        lines.append(f'  FILTER(STRSTARTS(STR(?n{i+1}), "http://www.wikidata.org/entity/Q"))')
+
+    lines.append(f"  ?n{hops-1} ?p{hops} wd:{qid2} .")
+    lines.append(f'  FILTER(STRSTARTS(STR(?p{hops}), "http://www.wikidata.org/prop/direct/"))')
+
+    for i in range(1, hops):
+        for j in range(i + 1, hops):
+            lines.append(f"  FILTER(?n{i} != ?n{j})")
+
+    lines.append("}")
+    lines.append("LIMIT 1")
+    return "\n".join(lines)
+
+
+def parse_path_from_binding(row: Dict[str, Any], qid1: str, qid2: str, hops: int) -> List[Tuple[str, str, str]]:
+    """
+    Convert one SPARQL result row into a path represented as:
+      [(source_qid, pid, target_qid), ...]
 
     Example:
-      qid1 --P19--> intermediate --P131--> qid2
-      => return P19
+      [("Q7786031", "P156", "Q5417613"),
+       ("Q5417613", "P175", "Q344983")]
     """
-    if max_hops < 1:
-        raise ValueError("max_hops must be >= 1")
+    path_edges: List[Tuple[str, str, str]] = []
 
-    union_blocks: List[str] = []
+    if hops == 1:
+        pid = row["p1"]["value"].rsplit("/", 1)[-1]
+        path_edges.append((qid1, pid, qid2))
+        return path_edges
 
-    # Direct 1-hop case
-    union_blocks.append(f"""
-    {{
-      wd:{qid1} ?p1 wd:{qid2} .
-      FILTER(STRSTARTS(STR(?p1), "http://www.wikidata.org/prop/direct/"))
-    }}
-    """)
+    current_source = qid1
+    for i in range(1, hops + 1):
+        pid = row[f"p{i}"]["value"].rsplit("/", 1)[-1]
+        if i < hops:
+            next_qid = row[f"n{i}"]["value"].rsplit("/", 1)[-1]
+        else:
+            next_qid = qid2
 
-    # Multi-hop outward paths
-    for hops in range(2, max_hops + 1):
-        lines = []
-        lines.append("{")
-        lines.append(f"  wd:{qid1} ?p1 ?n1 .")
-        lines.append('  FILTER(STRSTARTS(STR(?p1), "http://www.wikidata.org/prop/direct/"))')
-        lines.append('  FILTER(STRSTARTS(STR(?n1), "http://www.wikidata.org/entity/Q"))')
+        path_edges.append((current_source, pid, next_qid))
+        current_source = next_qid
 
-        for i in range(1, hops - 1):
-            lines.append(f"  ?n{i} ?p{i+1} ?n{i+1} .")
-            lines.append(f'  FILTER(STRSTARTS(STR(?p{i+1}), "http://www.wikidata.org/prop/direct/"))')
-            lines.append(f'  FILTER(STRSTARTS(STR(?n{i+1}), "http://www.wikidata.org/entity/Q"))')
-
-        lines.append(f"  ?n{hops-1} ?p{hops} wd:{qid2} .")
-        lines.append(f'  FILTER(STRSTARTS(STR(?p{hops}), "http://www.wikidata.org/prop/direct/"))')
-
-        for i in range(1, hops):
-            for j in range(i + 1, hops):
-                lines.append(f"  FILTER(?n{i} != ?n{j})")
-
-        lines.append("}")
-        union_blocks.append("\n".join(lines))
-
-    query = "SELECT DISTINCT ?p1 WHERE {\n"
-    query += "\nUNION\n".join(union_blocks)
-    query += "\n}\nORDER BY ?p1"
-    return query
+    return path_edges
 
 
-def find_connecting_first_hop_pids(qid1: str, qid2: str, max_hops: int) -> List[str]:
+def find_one_outward_path(qid1: str, qid2: str, max_hops: int) -> Optional[List[Tuple[str, str, str]]]:
     """
-    Return all distinct first-hop PIDs on qid1 that can reach qid2.
+    Find one outward path from qid1 to qid2 up to max_hops.
+
+    We try:
+      1 hop, then 2 hops, then 3 hops, ...
+
+    The first found path is returned.
     """
-    query = build_first_hop_property_query(qid1, qid2, max_hops)
-    data = run_sparql(query)
-    bindings = data.get("results", {}).get("bindings", [])
+    for hops in range(1, max_hops + 1):
+        query = build_exact_path_query(qid1, qid2, hops)
+        data = run_sparql(query)
+        bindings = data.get("results", {}).get("bindings", [])
+        if bindings:
+            return parse_path_from_binding(bindings[0], qid1, qid2, hops)
+    return None
 
-    pids: List[str] = []
-    for row in bindings:
-        prop_uri = row["p1"]["value"]
-        pid = prop_uri.rsplit("/", 1)[-1]
-        if re.fullmatch(r"P[1-9]\d*", pid):
-            pids.append(pid)
 
-    return dedupe_preserve_order(pids)
+def path_to_readable_string(path_edges: List[Tuple[str, str, str]], label_cache: Dict[str, str]) -> str:
+    """
+    Convert a path edge list into a readable string like:
+
+      This Is for the Lover in You (Q7786031)
+      -> followed by (P156)
+      -> Every Time I Close My Eyes (Q5417613)
+      -> performer (P175)
+      -> Babyface (Q344983)
+    """
+    if not path_edges:
+        return ""
+
+    parts = [format_qid_with_label(path_edges[0][0], label_cache)]
+    for source_qid, pid, target_qid in path_edges:
+        parts.append(format_pid_with_label(pid, label_cache))
+        parts.append(format_qid_with_label(target_qid, label_cache))
+
+    return " -> ".join(parts)
+
+
+def get_first_hop_pids_from_path(path_edges: List[Tuple[str, str, str]]) -> List[str]:
+    """
+    Extract the first-hop PID from a found path.
+    """
+    if not path_edges:
+        return []
+    return [path_edges[0][1]]
 
 
 # =============================================================================
@@ -662,12 +605,8 @@ def find_connecting_first_hop_pids(qid1: str, qid2: str, max_hops: int) -> List[
 # =============================================================================
 
 def should_skip_row(question: str, gold_answer: str, formatted: str) -> bool:
-    """
-    Skip rows that look like non-QA / empty rows.
-    """
-    if not question and not gold_answer and not formatted:
-        return True
-    return False
+    """Skip rows that are effectively empty / non-QA."""
+    return (not question and not gold_answer and not formatted)
 
 
 def process_row(
@@ -676,7 +615,7 @@ def process_row(
     label_cache: Dict[str, str],
 ) -> Dict[str, Any]:
     """
-    Process one row into the required output format.
+    Process one row into the final output format.
     """
     question = normalize_text(row.get("question"))
     gold_answer = normalize_text(row.get("gold_answer"))
@@ -692,19 +631,19 @@ def process_row(
         "gold_answer_entities": "",
         "property_number": "",
         "property_name": "",
+        "connection_path": "",
         "formatted": formatted,
     }
 
     if should_skip_row(question, gold_answer, formatted):
         return out
 
-    # -----------------------------------------------------------------
+    # -------------------------------------------------------------
     # Step 1: Extract entities
-    # -----------------------------------------------------------------
+    # -------------------------------------------------------------
     question_qids = extract_question_entities(question, formatted, existence_cache)
     answer_qids = extract_gold_answer_entities(gold_answer, existence_cache)
 
-    # Format entity lists as name (QID)
     out["question_entities"] = ";".join(
         format_qid_with_label(qid, label_cache) for qid in question_qids
     )
@@ -712,9 +651,9 @@ def process_row(
         format_qid_with_label(qid, label_cache) for qid in answer_qids
     )
 
-    # -----------------------------------------------------------------
-    # Step 2: Missing-node logic
-    # -----------------------------------------------------------------
+    # -------------------------------------------------------------
+    # Step 2: Missing node logic
+    # -------------------------------------------------------------
     answer_is_numeric_like = looks_numeric_like(gold_answer)
 
     missing_question_entity = (question != "" and len(question_qids) == 0)
@@ -724,35 +663,40 @@ def process_row(
         out["inconsistency_taxonomy"] = "missing node (entity)"
         return out
 
-    # -----------------------------------------------------------------
-    # Step 3: Numeric-like answers are not forced into edge checking
-    # -----------------------------------------------------------------
+    # Numeric-like answers are not forced into edge checking.
     if answer_is_numeric_like and len(answer_qids) == 0:
         return out
 
-    # -----------------------------------------------------------------
-    # Step 4: Check connections between all question × answer pairs
-    # -----------------------------------------------------------------
-    aggregated_pids: List[str] = []
+    # -------------------------------------------------------------
+    # Step 3: Find real paths for all question × answer pairs
+    # -------------------------------------------------------------
+    all_first_hop_pids: List[str] = []
+    all_readable_paths: List[str] = []
 
     for q_qid in question_qids:
         for a_qid in answer_qids:
             try:
-                pids = find_connecting_first_hop_pids(q_qid, a_qid, MAX_HOPS)
-                aggregated_pids.extend(pids)
+                path_edges = find_one_outward_path(q_qid, a_qid, MAX_HOPS)
             except Exception:
-                continue
+                path_edges = None
 
-    aggregated_pids = dedupe_preserve_order(aggregated_pids)
+            if path_edges:
+                all_first_hop_pids.extend(get_first_hop_pids_from_path(path_edges))
+                all_readable_paths.append(path_to_readable_string(path_edges, label_cache))
 
-    if not aggregated_pids:
+    all_first_hop_pids = dedupe_preserve_order(all_first_hop_pids)
+    all_readable_paths = dedupe_preserve_order(all_readable_paths)
+
+    # If no path exists, label as missing edge.
+    if not all_readable_paths:
         out["inconsistency_taxonomy"] = "missing edge (triplet)"
         return out
 
-    out["property_number"] = len(aggregated_pids)
+    out["property_number"] = len(all_first_hop_pids)
     out["property_name"] = ";".join(
-        format_pid_with_label(pid, label_cache) for pid in aggregated_pids
+        format_pid_with_label(pid, label_cache) for pid in all_first_hop_pids
     )
+    out["connection_path"] = " || ".join(all_readable_paths)
 
     return out
 
@@ -764,7 +708,7 @@ def process_row(
 def main() -> None:
     """
     Main pipeline:
-      1) read input CSV
+      1) load CSV
       2) process rows with tqdm
       3) save output CSV
     """
@@ -773,7 +717,6 @@ def main() -> None:
 
     existence_cache: Dict[str, bool] = {}
     label_cache: Dict[str, str] = {}
-
     output_records: List[Dict[str, Any]] = []
 
     for _, row in tqdm(df.iterrows(), total=len(df), desc="processing rows"):
@@ -790,6 +733,7 @@ def main() -> None:
         "gold_answer_entities",
         "property_number",
         "property_name",
+        "connection_path",
         "formatted",
     ]
     out_df = out_df[final_columns]
