@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 # =============================================================================
-# wikidata_invalid_case_pipeline_v4.py
+# wikidata_invalid_case_pipeline_v5.py
 # =============================================================================
 #
 # PURPOSE
@@ -20,59 +20,44 @@
 #   connection_path
 #   formatted
 #
-# MAIN FEATURES
-# -------------
-# 1. Extract question-side entities STRICTLY:
-#    - First inspect `formatted`
-#    - But only keep formatted QIDs that are actually supported by the question text
-#    - "Supported" means the entity label / alias overlaps strongly with the question
-#    - This prevents noisy formatted QIDs from being used as question entities
+# MAIN CHANGES IN THIS VERSION
+# ----------------------------
+# 1. STRICT QUESTION ENTITY EXTRACTION
+#    We now try to extract ALL obvious entity mentions from the question, not just
+#    one main topic entity.
 #
-# 2. Extract gold-answer-side entities:
-#    - If the answer is entity-like, link it to Wikidata QIDs
-#    - If the answer is date-like, do NOT force entity linking
+#    Example:
+#      "What is the name of the film in the Bridget Jones series that was not
+#       directed by Sharon Maguire"
 #
-# 3. Connection checking:
-#    - First try normal entity-to-entity path search
-#    - If gold_answer is date-like, try date properties directly on question entities:
-#         publication date (P577)
-#         start time (P580)
-#         end time (P582)
-#         point in time (P585)
+#    should extract:
+#      - Bridget Jones
+#      - Sharon Maguire
 #
-# 4. Taxonomy:
-#    - missing node (entity):
-#         only assigned after all extraction / date-property tries fail
-#    - missing edge (triplet):
-#         assigned when valid entity/date candidates exist but no connection is found
+#    rather than only "Bridget Jones".
 #
+# 2. STRICTNESS
+#    Question entities must be clearly supported by the actual question text.
+#    We do NOT blindly trust all QIDs from `formatted`.
 #
-# IMPORTANT STRICTNESS CHANGE
-# ---------------------------
-# In previous versions, formatted QIDs were trusted too much.
-# That caused rows like:
-#   "Where is the location of the photo on the album cover..."
-# to incorrectly use "Abbey Road (Q173643)" just because it appeared in formatted.
+# 3. ALL QUESTION ENTITIES MUST SUPPORT THE ANSWER
+#    When checking a gold-answer entity against the question entities, we require
+#    that the gold answer connect to ALL extracted question entities.
 #
-# This version fixes that by requiring question-text support:
-#   a formatted QID is only kept if its label or alias is actually mentioned in
-#   the question text (strict normalized token containment / phrase containment).
+#    In practice:
+#      - for each question entity q_i
+#      - try to find a path q_i -> ... -> gold_answer_entity
+#      - only keep an answer entity if all question entities succeed
 #
+# 4. DATE ANSWER FALLBACK
+#    If gold_answer is date-like, we try direct date properties on ALL extracted
+#    question entities:
+#      - publication date (P577)
+#      - start time (P580)
+#      - end time (P582)
+#      - point in time (P585)
 #
-# DATE-ANSWER FALLBACK
-# --------------------
-# If gold_answer is date-like (for example "2002", "2019", "26 July 2021"),
-# the script tries these properties on each question entity:
-#
-#   P577 = publication date
-#   P580 = start time
-#   P582 = end time
-#   P585 = point in time
-#
-# If a matching date is found:
-#   - property_number = count of matched date properties
-#   - property_name   = human-readable property labels
-#   - connection_path = e.g. "Tim Howard (...) -> start time (P580) -> 2002"
+#    Missing node (entity) is only assigned after these try-outs fail.
 #
 #
 # DEPENDENCIES
@@ -82,7 +67,7 @@
 #
 # HOW TO RUN
 # ----------
-#   python wikidata_invalid_case_pipeline_v4.py
+#   python wikidata_invalid_case_pipeline_v5.py
 #
 # =============================================================================
 
@@ -103,12 +88,12 @@ from tqdm import tqdm
 # =============================================================================
 
 INPUT_CSV_PATH = "all_invalid_cases_first20.csv"
-OUTPUT_CSV_PATH = "wikidata_pipeline_output_v4.csv"
+OUTPUT_CSV_PATH = "wikidata_pipeline_output_v5.csv"
 
 LABEL_LANGUAGE = "en"
 MAX_HOPS = 2
 
-USER_AGENT = "WikidataInvalidCasePipelineV4/1.0 (Python requests; contact: your-email@example.com)"
+USER_AGENT = "WikidataInvalidCasePipelineV5/1.0 (Python requests; contact: your-email@example.com)"
 HEADERS_JSON = {"User-Agent": USER_AGENT, "Accept": "application/json"}
 
 WBSEARCH_API = "https://www.wikidata.org/w/api.php"
@@ -118,7 +103,6 @@ SPARQL_ENDPOINT = "https://query.wikidata.org/sparql"
 HTTP_TIMEOUT = 25
 RETRIES = 2
 
-# Date properties requested by you
 DATE_PID_TO_NAME = {
     "P577": "publication date",
     "P580": "start time",
@@ -127,13 +111,22 @@ DATE_PID_TO_NAME = {
 }
 DATE_PIDS = list(DATE_PID_TO_NAME.keys())
 
-# Stopwords for crude question/entity support matching
+# A small stopword list used in text normalization / support checks.
 STOPWORDS = {
     "the", "a", "an", "of", "in", "on", "for", "from", "to", "by", "with", "and",
     "or", "at", "as", "is", "was", "were", "be", "been", "being", "what", "which",
     "who", "where", "when", "how", "many", "much", "did", "does", "do", "name",
     "year", "first", "last", "game", "play", "played", "team", "series", "song",
-    "film", "movie", "tv", "show", "season", "cover", "photo", "location"
+    "film", "movie", "tv", "show", "season", "cover", "photo", "location", "not",
+    "directed", "written", "performed", "singer", "author", "country", "position",
+    "number", "member", "members", "won", "win", "made", "did", "their", "his",
+    "her", "its", "that", "this", "these", "those", "there", "whereas", "while"
+}
+
+# Words that should not be treated as standalone obvious entity names.
+QUESTION_WORDS = {
+    "what", "which", "who", "where", "when", "why", "how", "name", "film",
+    "movie", "series", "song", "country", "team", "year"
 }
 
 
@@ -172,9 +165,9 @@ def dedupe_preserve_order(items: List[str]) -> List[str]:
 
 def normalize_for_match(text: str) -> str:
     """
-    Normalize text for strict containment checks.
+    Normalize text for containment / overlap matching.
 
-    Lowercase, remove most punctuation, collapse whitespace.
+    Lowercase, remove punctuation, collapse whitespace.
     """
     text = text.lower()
     text = re.sub(r"[_/\\|]+", " ", text)
@@ -185,7 +178,7 @@ def normalize_for_match(text: str) -> str:
 
 def tokenize_for_match(text: str) -> List[str]:
     """
-    Tokenize normalized text, removing simple stopwords.
+    Tokenize normalized text and remove simple stopwords.
     """
     text = normalize_for_match(text)
     toks = [t for t in text.split() if t and t not in STOPWORDS]
@@ -218,13 +211,6 @@ def looks_numeric_like(text: str) -> bool:
 def looks_date_like(text: str) -> bool:
     """
     More specific detector for date-like answers.
-
-    Examples:
-      2002
-      2019
-      26 July 2021
-      July 2021
-      2021-07-26
     """
     t = text.strip().lower()
     if not t:
@@ -246,9 +232,7 @@ def looks_date_like(text: str) -> bool:
 
 
 def year_from_text(text: str) -> Optional[str]:
-    """
-    Extract a 4-digit year if present.
-    """
+    """Extract a 4-digit year if present."""
     m = re.search(r"\b(1[0-9]{3}|20[0-9]{2}|21[0-9]{2})\b", text)
     return m.group(1) if m else None
 
@@ -282,9 +266,7 @@ def safe_get(
 
 
 def qid_exists(qid: str, existence_cache: Dict[str, bool]) -> bool:
-    """
-    Live existence check for a QID.
-    """
+    """Live existence check for a QID."""
     if qid in existence_cache:
         return existence_cache[qid]
 
@@ -300,9 +282,7 @@ def qid_exists(qid: str, existence_cache: Dict[str, bool]) -> bool:
 
 
 def wbsearch_entities(search_text: str, limit: int = 5, language: str = LABEL_LANGUAGE) -> List[Dict[str, Any]]:
-    """
-    Live Wikidata search using wbsearchentities.
-    """
+    """Live Wikidata search using wbsearchentities."""
     params = {
         "action": "wbsearchentities",
         "format": "json",
@@ -318,9 +298,7 @@ def wbsearch_entities(search_text: str, limit: int = 5, language: str = LABEL_LA
 
 
 def get_label_for_id(entity_id: str, label_cache: Dict[str, str], language: str = LABEL_LANGUAGE) -> str:
-    """
-    Get label for QID or PID.
-    """
+    """Get label for QID or PID."""
     if entity_id in label_cache:
         return label_cache[entity_id]
 
@@ -345,9 +323,9 @@ def get_label_for_id(entity_id: str, label_cache: Dict[str, str], language: str 
 
 def get_aliases_for_qid(qid: str, alias_cache: Dict[str, List[str]], language: str = LABEL_LANGUAGE) -> List[str]:
     """
-    Fetch aliases for a QID from Wikidata.
+    Fetch aliases for a QID.
 
-    Used to decide whether a formatted QID is actually supported by question text.
+    Used to test whether a candidate entity is really supported by question text.
     """
     if qid in alias_cache:
         return alias_cache[qid]
@@ -383,12 +361,12 @@ def format_qid_with_label(qid: str, label_cache: Dict[str, str]) -> str:
 
 
 def format_pid_with_label(pid: str, label_cache: Dict[str, str]) -> str:
-    """Format PID as property label (PID)."""
+    """Format PID as label (PID)."""
     return f"{get_label_for_id(pid, label_cache)} ({pid})"
 
 
 # =============================================================================
-# ID EXTRACTION
+# EXPLICIT ID EXTRACTION
 # =============================================================================
 
 def extract_explicit_qids(text: str) -> List[str]:
@@ -401,7 +379,7 @@ def extract_explicit_qids(text: str) -> List[str]:
 
 def extract_qids_from_formatted(formatted: str, existence_cache: Dict[str, bool]) -> List[str]:
     """
-    Extract QIDs from formatted, keep only existing ones.
+    Extract QIDs from formatted and keep only existing ones.
     """
     qids = extract_explicit_qids(formatted)
     qids = [qid for qid in qids if qid_exists(qid, existence_cache)]
@@ -409,21 +387,16 @@ def extract_qids_from_formatted(formatted: str, existence_cache: Dict[str, bool]
 
 
 # =============================================================================
-# STRICT QUESTION SUPPORT CHECK
+# STRICT QUESTION ENTITY SUPPORT
 # =============================================================================
 
 def question_supports_entity(question: str, qid: str, label_cache: Dict[str, str], alias_cache: Dict[str, List[str]]) -> bool:
     """
-    Strictly check whether a candidate entity is actually supported by the question text.
+    Strictly check whether an entity is supported by question text.
 
-    Strategy:
-      1) get label + aliases for the QID
-      2) normalize each candidate string
-      3) require either:
-         - exact phrase containment in question, or
-         - strong token overlap (all informative tokens present)
-
-    This is intentionally strict to reject noisy formatted QIDs.
+    Accept if:
+      - full normalized label/alias appears in normalized question text
+      - OR all informative tokens of a label/alias appear in question text
     """
     q_norm = normalize_for_match(question)
     q_tokens = set(tokenize_for_match(question))
@@ -441,12 +414,9 @@ def question_supports_entity(question: str, qid: str, label_cache: Dict[str, str
         if not n_norm:
             continue
 
-        # Strongest check: exact normalized phrase appears in question.
         if n_norm in q_norm:
             return True
 
-        # Strict token support: all non-stopword tokens of the entity label
-        # must appear in the question.
         if n_tokens and all(tok in q_tokens for tok in n_tokens):
             return True
 
@@ -454,20 +424,109 @@ def question_supports_entity(question: str, qid: str, label_cache: Dict[str, str
 
 
 # =============================================================================
-# LIVE SEARCH FALLBACK
+# STRICT OBVIOUS-NAME EXTRACTION FROM QUESTION
 # =============================================================================
+
+def extract_capitalized_name_spans(question: str) -> List[str]:
+    """
+    Extract obvious name-like spans from the question.
+
+    This targets explicit names such as:
+      - Sharon Maguire
+      - Tim Howard
+      - Ellen White
+      - Alex Morgan
+      - Megan Rapinoe
+      - Bridget Jones
+
+    It is intentionally strict and biased toward obvious proper names.
+
+    Approach:
+      - find contiguous sequences of capitalized tokens / initials / apostrophe names
+      - discard leading WH words and generic words
+      - keep spans of 1+ capitalized tokens, but prefer multi-token spans
+    """
+    if not question:
+        return []
+
+    # Preserve original capitalization; lightly clean punctuation.
+    text = re.sub(r"[“”\"`]", "", question)
+    text = re.sub(r"[\(\)\[\]\{\}:;!?]", " ", text)
+    tokens = text.split()
+
+    spans: List[str] = []
+    current: List[str] = []
+
+    def is_name_token(tok: str) -> bool:
+        # Accept tokens like Sharon, Maguire, O'Neil, U.S., McDonald
+        return bool(re.fullmatch(r"[A-Z][A-Za-z'’-]*\.?", tok))
+
+    def flush_current():
+        nonlocal current, spans
+        if current:
+            span = " ".join(current).strip(" ,.")
+            if span:
+                spans.append(span)
+        current = []
+
+    for tok in tokens:
+        clean_tok = tok.strip(" ,.")
+        if is_name_token(clean_tok):
+            current.append(clean_tok)
+        else:
+            flush_current()
+
+    flush_current()
+
+    # Filter bad spans
+    filtered: List[str] = []
+    for span in spans:
+        norm = normalize_for_match(span)
+        toks = norm.split()
+        if not toks:
+            continue
+
+        # Drop spans that start with question words or are entirely generic.
+        if toks[0] in QUESTION_WORDS:
+            continue
+
+        # Drop one-token generic nouns.
+        if len(toks) == 1 and toks[0] in {"film", "series", "song", "team", "country", "year"}:
+            continue
+
+        filtered.append(span)
+
+    # Prefer longer spans first; still preserve deduped order later.
+    filtered = sorted(filtered, key=lambda x: (-len(x.split()), question.find(x)))
+    return dedupe_preserve_order(filtered)
+
 
 def extract_candidate_question_surfaces(question: str) -> List[str]:
     """
-    Heuristic question-surface extraction for live search fallback.
+    Build candidate question surfaces for live search.
+
+    Priority:
+      1) obvious capitalized name spans
+      2) full question
+      3) stripped question
+      4) split fragments
+
+    The goal is to capture ALL obvious names in the question.
     """
     q = question.strip()
     if not q:
         return []
 
     q = re.sub(r"\s+", " ", q)
-    candidates: List[str] = [q.strip(" ?")]
+    candidates: List[str] = []
 
+    # 1) obvious name-like spans first
+    candidates.extend(extract_capitalized_name_spans(q))
+
+    # 2) full question sometimes helps as a fallback
+    candidates.append(q.strip(" ?"))
+
+    # 3) remove leading WH template
     q_lower = q.lower()
     prefixes = [
         r"^who\s+",
@@ -495,7 +554,7 @@ def extract_candidate_question_surfaces(question: str) -> List[str]:
 
     split_phrases = [
         " of ", " in ", " on ", " for ", " from ", " by ",
-        " where ", " that ", " which ", " who ", " whose "
+        " where ", " that ", " which ", " who ", " whose ", " not directed by "
     ]
 
     pieces = [stripped]
@@ -516,6 +575,8 @@ def extract_candidate_question_surfaces(question: str) -> List[str]:
 def split_answer_into_candidate_surfaces(gold_answer: str) -> List[str]:
     """
     Split gold_answer into candidate entity surfaces.
+
+    Handles multiple entity answers separated by commas / 'and' / '&'.
     """
     t = gold_answer.strip()
     if not t:
@@ -535,6 +596,10 @@ def split_answer_into_candidate_surfaces(gold_answer: str) -> List[str]:
 def pick_best_qid_for_surface(surface: str, existence_cache: Dict[str, bool]) -> Optional[str]:
     """
     Link a free-text surface to Wikidata using live search.
+
+    Policy:
+      - explicit QID wins
+      - otherwise first existing search hit wins
     """
     surface = surface.strip()
     if not surface:
@@ -570,34 +635,29 @@ def extract_question_entities(
     alias_cache: Dict[str, List[str]],
 ) -> List[str]:
     """
-    Extract question-side entities.
+    Extract ALL strict question-side entities.
 
     Priority:
-      1) formatted QIDs that are STRICTLY supported by question text
-      2) explicit QIDs in question
-      3) live search fallback, but only keep candidates supported by question text
+      1) formatted QIDs that are text-supported by the question
+      2) explicit QIDs in the question
+      3) live-search on obvious question name spans and other candidate surfaces
 
-    This is deliberately strict.
+    This version is stricter and multi-entity aware.
     """
-    # 1) formatted QIDs, filtered by question support
-    formatted_qids = extract_qids_from_formatted(formatted, existence_cache)
-    strict_formatted_qids = [
-        qid for qid in formatted_qids
-        if question_supports_entity(question, qid, label_cache, alias_cache)
-    ]
-    if strict_formatted_qids:
-        return dedupe_preserve_order(strict_formatted_qids)
-
-    # 2) explicit QIDs in question
-    explicit_question_qids = [
-        qid for qid in extract_explicit_qids(question)
-        if qid_exists(qid, existence_cache)
-    ]
-    if explicit_question_qids:
-        return dedupe_preserve_order(explicit_question_qids)
-
-    # 3) live search fallback, but keep only supportable results
     out_qids: List[str] = []
+
+    # 1) formatted QIDs, but ONLY if supported by the question text
+    formatted_qids = extract_qids_from_formatted(formatted, existence_cache)
+    for qid in formatted_qids:
+        if question_supports_entity(question, qid, label_cache, alias_cache):
+            out_qids.append(qid)
+
+    # 2) explicit QIDs directly in the question
+    for qid in extract_explicit_qids(question):
+        if qid_exists(qid, existence_cache):
+            out_qids.append(qid)
+
+    # 3) live-search candidate question surfaces, keeping only strict matches
     for cand in extract_candidate_question_surfaces(question):
         qid = pick_best_qid_for_surface(cand, existence_cache)
         if qid and question_supports_entity(question, qid, label_cache, alias_cache):
@@ -610,7 +670,7 @@ def extract_gold_answer_entities(gold_answer: str, existence_cache: Dict[str, bo
     """
     Extract gold-answer-side entities.
 
-    Date-like answers are not forced into entity linking.
+    Date-like and numeric-like answers are not forced into entity linking.
     """
     gold_answer = gold_answer.strip()
     if not gold_answer:
@@ -655,7 +715,7 @@ def run_sparql(query: str) -> Dict[str, Any]:
 
 def build_exact_path_query(qid1: str, qid2: str, hops: int) -> str:
     """
-    Build a SPARQL query for one outward path of exactly `hops` edges.
+    Build a SPARQL query for one outward path of exactly `hops` edges from qid1 to qid2.
     """
     if hops < 1:
         raise ValueError("hops must be >= 1")
@@ -761,8 +821,6 @@ def get_first_hop_pids_from_path(path_edges: List[Tuple[str, str, str]]) -> List
 def build_date_property_query(qid: str, pid: str) -> str:
     """
     Query a direct date property for one entity.
-
-    We return ?value, which may be xsd:dateTime.
     """
     return f"""
     SELECT ?value WHERE {{
@@ -775,9 +833,9 @@ def value_matches_gold_date(value_str: str, gold_answer: str) -> bool:
     """
     Decide whether a Wikidata date/time value matches the gold answer.
 
-    Current policy:
-      - if gold answer is a year, compare by year
-      - else do normalized substring matching
+    Policy:
+      - if gold answer has a year, compare by year
+      - otherwise do substring-based normalized matching
     """
     gold = gold_answer.strip().lower()
     value = value_str.strip().lower()
@@ -797,14 +855,11 @@ def find_date_property_matches(
     label_cache: Dict[str, str],
 ) -> Tuple[List[str], List[str]]:
     """
-    Try matching date-like gold answers using date properties on question entities.
+    Try matching date-like gold answers using date properties on ALL question entities.
 
     Returns:
       matched_pids
       readable_paths
-
-    Example readable path:
-      Tim Howard (Q123...) -> start time (P580) -> 2002
     """
     matched_pids: List[str] = []
     readable_paths: List[str] = []
@@ -839,6 +894,42 @@ def should_skip_row(question: str, gold_answer: str, formatted: str) -> bool:
     return (not question and not gold_answer and not formatted)
 
 
+def all_question_entities_connect_to_answer(
+    question_qids: List[str],
+    answer_qid: str,
+    label_cache: Dict[str, str],
+) -> Tuple[bool, List[str], List[str]]:
+    """
+    Require that ALL extracted question entities connect to the answer entity.
+
+    Returns:
+      success
+      first_hop_pids
+      readable_paths
+
+    success is True only if every question entity has at least one path to answer_qid.
+    """
+    all_first_hop_pids: List[str] = []
+    all_readable_paths: List[str] = []
+
+    if not question_qids:
+        return False, [], []
+
+    for q_qid in question_qids:
+        try:
+            path_edges = find_one_outward_path(q_qid, answer_qid, MAX_HOPS)
+        except Exception:
+            path_edges = None
+
+        if not path_edges:
+            return False, [], []
+
+        all_first_hop_pids.extend(get_first_hop_pids_from_path(path_edges))
+        all_readable_paths.append(path_to_readable_string(path_edges, label_cache))
+
+    return True, dedupe_preserve_order(all_first_hop_pids), dedupe_preserve_order(all_readable_paths)
+
+
 def process_row(
     row: pd.Series,
     existence_cache: Dict[str, bool],
@@ -848,11 +939,11 @@ def process_row(
     """
     Process one row into the final output format.
 
-    IMPORTANT:
-    missing node (entity) is assigned only AFTER:
-      - strict question entity extraction
-      - answer entity extraction
-      - date-answer fallback try-outs
+    Rules:
+      - extract ALL strict question entities
+      - if gold_answer is date-like, try date properties on question entities
+      - otherwise, require the answer entity to connect to ALL question entities
+      - assign missing node only after these try-outs
     """
     question = normalize_text(row.get("question"))
     gold_answer = normalize_text(row.get("gold_answer"))
@@ -875,9 +966,9 @@ def process_row(
     if should_skip_row(question, gold_answer, formatted):
         return out
 
-    # -------------------------------------------------------------
-    # Step 1: strict question entity extraction
-    # -------------------------------------------------------------
+    # -----------------------------------------------------------------
+    # Step 1: Extract ALL strict question entities
+    # -----------------------------------------------------------------
     question_qids = extract_question_entities(
         question=question,
         formatted=formatted,
@@ -886,9 +977,9 @@ def process_row(
         alias_cache=alias_cache,
     )
 
-    # -------------------------------------------------------------
-    # Step 2: gold-answer extraction
-    # -------------------------------------------------------------
+    # -----------------------------------------------------------------
+    # Step 2: Extract gold-answer entities
+    # -----------------------------------------------------------------
     answer_qids = extract_gold_answer_entities(gold_answer, existence_cache)
 
     out["question_entities"] = ";".join(
@@ -898,11 +989,10 @@ def process_row(
         format_qid_with_label(qid, label_cache) for qid in answer_qids
     )
 
-    # -------------------------------------------------------------
-    # Step 3: date-answer fallback
-    # -------------------------------------------------------------
+    # -----------------------------------------------------------------
+    # Step 3: Date-answer fallback
+    # -----------------------------------------------------------------
     answer_is_date_like = looks_date_like(gold_answer)
-
     if answer_is_date_like and question_qids:
         matched_pids, readable_paths = find_date_property_matches(
             question_qids=question_qids,
@@ -917,45 +1007,50 @@ def process_row(
             out["connection_path"] = " || ".join(readable_paths)
             return out
 
-    # -------------------------------------------------------------
-    # Step 4: normal entity-to-entity path search
-    # -------------------------------------------------------------
+    # -----------------------------------------------------------------
+    # Step 4: Normal entity-to-entity checking
+    #         Require ALL question entities to connect to the answer entity
+    # -----------------------------------------------------------------
     if question_qids and answer_qids:
-        all_first_hop_pids: List[str] = []
-        all_readable_paths: List[str] = []
+        successful_answer_qids: List[str] = []
+        aggregated_pids: List[str] = []
+        aggregated_paths: List[str] = []
 
-        for q_qid in question_qids:
-            for a_qid in answer_qids:
-                try:
-                    path_edges = find_one_outward_path(q_qid, a_qid, MAX_HOPS)
-                except Exception:
-                    path_edges = None
-
-                if path_edges:
-                    all_first_hop_pids.extend(get_first_hop_pids_from_path(path_edges))
-                    all_readable_paths.append(path_to_readable_string(path_edges, label_cache))
-
-        all_first_hop_pids = dedupe_preserve_order(all_first_hop_pids)
-        all_readable_paths = dedupe_preserve_order(all_readable_paths)
-
-        if all_readable_paths:
-            out["property_number"] = len(all_first_hop_pids)
-            out["property_name"] = ";".join(
-                format_pid_with_label(pid, label_cache) for pid in all_first_hop_pids
+        for a_qid in answer_qids:
+            success, pids, paths = all_question_entities_connect_to_answer(
+                question_qids=question_qids,
+                answer_qid=a_qid,
+                label_cache=label_cache,
             )
-            out["connection_path"] = " || ".join(all_readable_paths)
+            if success:
+                successful_answer_qids.append(a_qid)
+                aggregated_pids.extend(pids)
+                aggregated_paths.extend(paths)
+
+        successful_answer_qids = dedupe_preserve_order(successful_answer_qids)
+        aggregated_pids = dedupe_preserve_order(aggregated_pids)
+        aggregated_paths = dedupe_preserve_order(aggregated_paths)
+
+        if successful_answer_qids:
+            # Restrict displayed gold answer entities to only the ones that passed
+            out["gold_answer_entities"] = ";".join(
+                format_qid_with_label(qid, label_cache) for qid in successful_answer_qids
+            )
+            out["property_number"] = len(aggregated_pids)
+            out["property_name"] = ";".join(
+                format_pid_with_label(pid, label_cache) for pid in aggregated_pids
+            )
+            out["connection_path"] = " || ".join(aggregated_paths)
             return out
 
-        # Both sides exist, but no connection found.
+        # Both question entities and answer entities exist, but the answer
+        # could not be connected to ALL question entities.
         out["inconsistency_taxonomy"] = "missing edge (triplet)"
         return out
 
-    # -------------------------------------------------------------
-    # Step 5: assign missing node only AFTER all try-outs
-    # -------------------------------------------------------------
-    # If the answer is date-like and question entities exist, we already tried.
-    # If question entities are missing, or answer entities are missing for a
-    # non-date/non-numeric answer, we can now assign missing node.
+    # -----------------------------------------------------------------
+    # Step 5: Assign missing node only AFTER all try-outs
+    # -----------------------------------------------------------------
     answer_is_numeric_like = looks_numeric_like(gold_answer)
 
     missing_question_entity = (question != "" and len(question_qids) == 0)
