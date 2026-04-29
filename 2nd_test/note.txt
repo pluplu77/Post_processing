@@ -1,16 +1,20 @@
-Type1: 
-Correct entities, wrong properties used.
-- result: Got no rows and * columns
+Correct complete/incomplete entities, wrong properties used.
 - formatted: 
     - Using entities:...
     - Using properties:...
 
-Type2:
+
+Strong singal for missing edge(triplet).
+- formatted: 
+    ...is not available in Wikidata.
+    - Using entities:...
+    - Using properties:...
+
 Strong signal for missing edge. Wrong entity used. NER from scratch.
 - formatted: 
     Using other (non-indexed) items:
 
-Type3:
+
 Nothing to use. Reason stops at surface level.
 - formatted:
     Error executing SPARQL query over wikidata...(the input most likely does not follow the grammar).

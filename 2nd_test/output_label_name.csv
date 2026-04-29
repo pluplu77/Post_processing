@@ -4,5 +4,6 @@ Los Angeles Film Critics Association Award for Best Actor (Q503034),Taxi Driver 
 Stephen Sommers (Q363402),The Mummy (Q1214882),The Mummy (Q1214882)->creator (P170)->Stephen Sommers (Q363402),1,creator (P170),,
 Robin Williams (Q83338),Waiting for Godot (Q19871),,,,,
 Grammy Award for Best Contemporary Folk Album (Q5593772),John Prine (Q520296),John Prine (Q520296)->award received (P166)->Grammy Award for Best Contemporary Folk Album (Q5593772),1,award received (P166),,
-Fair & Square (Q5429755),Grammy Award for Best Contemporary Folk Album (Q5593772),"Fair & Square (Q5429755)->producer (P162)->John Prine (Q520296)->award received (P166)->Grammy Award for Best Contemporary Folk Album (Q5593772)
-Fair & Square (Q5429755)->performer (P175)->John Prine (Q520296)->award received (P166)->Grammy Award for Best Contemporary Folk Album (Q5593772)",3,producer (P162);award received (P166);performer (P175),,
+Fair & Square (Q5429755),Grammy Award for Best Contemporary Folk Album (Q5593772),"Path1: Fair & Square (Q5429755)->producer (P162)->John Prine (Q520296)->award received (P166)->Grammy Award for Best Contemporary Folk Album (Q5593772)
+Path2: Fair & Square (Q5429755)->performer (P175)->John Prine (Q520296)->award received (P166)->Grammy Award for Best Contemporary Folk Album (Q5593772)",3,producer (P162);award received (P166);performer (P175),,
+Writers & Lovers (Q96415602),Grove Press (Q3777164),,,,,

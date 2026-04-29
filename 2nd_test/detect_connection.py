@@ -425,6 +425,22 @@ def readable_raw_connection_path(raw_path: str, language: str = LABEL_LANGUAGE) 
     readable_paths: List[str] = []
 
     for one_path in raw_path.split("\n"):
+        one_path = one_path.strip()
+
+        if not one_path:
+            continue
+
+        path_prefix = ""
+
+        # Preserve prefixes like:
+        #   Path1:
+        #   Path2:
+        prefix_match = re.match(r"^(Path\d+:\s*)(.*)$", one_path)
+
+        if prefix_match:
+            path_prefix = prefix_match.group(1)
+            one_path = prefix_match.group(2)
+
         tokens = [token.strip() for token in one_path.split("->") if token.strip()]
         readable_tokens: List[str] = []
 
@@ -436,11 +452,9 @@ def readable_raw_connection_path(raw_path: str, language: str = LABEL_LANGUAGE) 
             else:
                 readable_tokens.append(token)
 
-        readable_paths.append("->".join(readable_tokens))
+        readable_paths.append(path_prefix + "->".join(readable_tokens))
 
     return "\n".join(readable_paths)
-
-
 # ============================================================
 # WIKIDATA JSON HELPERS
 # ============================================================
@@ -842,6 +856,21 @@ def summarize_connections(
     qualifier_ids = unique_preserve_order(qualifier_ids)
     path_strings = unique_preserve_order(path_strings)
 
+    # New formatting:
+    # One path:
+    #   Q1->P1->Q2
+    #
+    # Multiple paths:
+    #   Path1: Q1->P1->Q2
+    #   Path2: Q1->P2->Q3->P3->Q2
+    if len(path_strings) == 1:
+        connection_path = path_strings[0]
+    else:
+        connection_path = "\n".join(
+            f"Path{i + 1}: {path}"
+            for i, path in enumerate(path_strings)
+        )
+
     if readable:
         property_list = ";".join(
             readable_property(pid, language) for pid in property_ids
@@ -854,7 +883,7 @@ def summarize_connections(
         qualifier_list = ";".join(qualifier_ids)
 
     return {
-        "Connection_Path": "\n".join(path_strings),
+        "Connection_Path": connection_path,
         "Property_Number": len(property_ids) if property_ids else "",
         "Property_list": property_list,
         "Qualifier_Number": len(qualifier_ids) if qualifier_ids else "",
