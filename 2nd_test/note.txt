@@ -1,10 +1,14 @@
 Type1: 
 Correct entities, wrong properties used.
-- answer: a valid answer
-- explanation:null
+- result: Got no rows and * columns
 - formatted: 
     - Using entities:...
     - Using properties:...
+
+Type2:
+Strong signal for missing edge. Wrong entity used. NER from scratch.
+- formatted: 
+    Using other (non-indexed) items:
 
 Type3:
 Nothing to use. Reason stops at surface level.

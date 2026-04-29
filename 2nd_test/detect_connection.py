@@ -9,7 +9,7 @@
 # 2. Edit the hardcoded file paths in the CONFIG section below.
 #
 # 3. Run:
-#       python wikidata_entity1_first_paths.py
+#       python wikidata_bidirectional_paths.py
 #
 # ============================================================
 # INPUT CSV
@@ -37,47 +37,48 @@
 # Qualifier_list
 #
 # ============================================================
-# SEARCH PRIORITY
+# SEARCH LOGIC
 # ============================================================
-# 1. Search Entity_1's own Wikidata page first:
-#      https://www.wikidata.org/wiki/Special:EntityData/ENTITY_1.json
+# This script is now bi-directional.
 #
-# 2. On Entity_1's page, search:
-#      A. direct main-statement value:
-#           Entity_1 -> property -> Entity_2
+# Step 1:
+#   Search Entity_1's own Wikidata page:
+#       Entity_1 -> property -> Entity_2
+#       Entity_1 -> property -> main value -> qualifier -> Entity_2
 #
-#      B. qualifier value:
-#           Entity_1 -> property -> main value -> qualifier -> Entity_2
+# Step 2:
+#   If Step 1 finds nothing, check incoming links to Entity_1 using
+#   the WhatLinksHere-equivalent MediaWiki API with limit 500.
 #
-# 3. Only if Entity_1's own page gives no result, use a fallback
-#    outward truthy graph search.
+#   Equivalent page:
+#       https://www.wikidata.org/w/index.php?title=Special:WhatLinksHere/Q363402&limit=500
+#
+#   If Entity_2 is one of the pages linking to Entity_1, then scan
+#   Entity_2's page for the reverse stored statement:
+#       Entity_2 -> property -> Entity_1
+#       Entity_2 -> property -> main value -> qualifier -> Entity_1
+#
+# Step 3:
+#   If still nothing is found, use fallback truthy graph search in
+#   both directions.
 #
 # ============================================================
-# IMPORTANT EXAMPLE
+# IMPORTANT
 # ============================================================
-# Q503034 = Los Angeles Film Critics Association Award for Best Actor
-# Q36949  = Robert De Niro
-# Q47221  = Taxi Driver
+# The connection path shows the actual Wikidata statement direction.
 #
-# Wikidata stores:
+# Example:
+#   Input:
+#       Stephen Sommers (Q363402), The Mummy (Q1214882)
 #
-#   Q503034
-#     P1346 winner
-#       main value: Q36949 Robert De Niro
-#       qualifier P1686 for work: Q47221 Taxi Driver
+#   Wikidata stores the statement on The Mummy's page:
+#       The Mummy -> creator -> Stephen Sommers
 #
-# Correct path:
+#   So the output path is:
+#       The Mummy (Q1214882)->creator (P170)->Stephen Sommers (Q363402)
 #
-#   Q503034 -> P1346 -> Q36949 -> P1686 -> Q47221
-#
-# Readable:
-#
-#   Los Angeles Film Critics Association Award for Best Actor (Q503034)
-#   -> winner (P1346)
-#   -> Robert De Niro (Q36949)
-#   -> for work (P1686)
-#   -> Taxi Driver (Q47221)
-#
+# This is correct because the relationship exists as an incoming link
+# to Stephen Sommers, not as an outgoing statement from Stephen Sommers.
 # ============================================================
 
 from __future__ import annotations
@@ -105,15 +106,18 @@ LABEL_LANGUAGE = "en"
 
 MAX_FALLBACK_HOPS = 2
 
+WHATLINKSHERE_LIMIT = 500
+
 INCLUDE_DEPRECATED_STATEMENTS = False
 
 SPARQL_ENDPOINT = "https://query.wikidata.org/sparql"
 ENTITY_DATA_URL = "https://www.wikidata.org/wiki/Special:EntityData/{}.json"
 WBGETENTITIES_API = "https://www.wikidata.org/w/api.php"
+MEDIAWIKI_API = "https://www.wikidata.org/w/api.php"
 
 HEADERS = {
     "Accept": "application/json",
-    "User-Agent": "WikidataEntity1FirstPathFinder/4.0 "
+    "User-Agent": "WikidataBidirectionalPathFinder/5.0 "
                   "(Python requests; contact: your-email@example.com)",
 }
 
@@ -124,44 +128,6 @@ HEADERS = {
 
 @dataclass
 class ConnectionResult:
-    """
-    property_ids:
-        Main Wikidata statement properties from Entity_1.
-
-        Example:
-            ["P1346"]
-
-    qualifier_ids:
-        Qualifier properties on the statement.
-
-        Example:
-            ["P1686"]
-
-    path_steps:
-        The exact ordered connection path.
-
-        Direct statement:
-            [
-                ("entity", "Q1214882"),
-                ("property", "P170"),
-                ("entity", "Q363402"),
-            ]
-
-        Qualified statement:
-            [
-                ("entity", "Q503034"),
-                ("property", "P1346"),
-                ("entity", "Q36949"),
-                ("qualifier", "P1686"),
-                ("entity", "Q47221"),
-            ]
-
-    source:
-        Where this result came from.
-
-    priority:
-        Lower number is better.
-    """
     property_ids: List[str]
     qualifier_ids: List[str]
     path_steps: List[Tuple[str, str]]
@@ -192,15 +158,6 @@ def validate_qid(qid: str) -> str:
     return qid
 
 
-def validate_pid(pid: str) -> str:
-    pid = str(pid).strip().upper()
-
-    if not re.fullmatch(r"P[1-9]\d*", pid):
-        raise ValueError(f"Invalid PID: {pid}")
-
-    return pid
-
-
 def extract_last_path_segment(uri: str) -> str:
     return uri.rsplit("/", 1)[-1]
 
@@ -222,15 +179,10 @@ def unique_preserve_order(values: List[str]) -> List[str]:
 # ============================================================
 
 _entity_json_cache: Dict[str, Dict[str, Any]] = {}
+_whatlinkshere_cache: Dict[str, Set[str]] = {}
 
 
 def get_entity_json(qid: str, timeout: int = 30, retries: int = 2) -> Dict[str, Any]:
-    """
-    Fetch EntityData JSON for a Wikidata item.
-
-    Uses:
-        https://www.wikidata.org/wiki/Special:EntityData/QID.json
-    """
     if qid in _entity_json_cache:
         return _entity_json_cache[qid]
 
@@ -266,6 +218,68 @@ def entity_exists(qid: str) -> bool:
         return qid in data.get("entities", {})
     except Exception:
         return False
+
+
+def get_whatlinkshere_qids(target_qid: str, limit: int = WHATLINKSHERE_LIMIT) -> Set[str]:
+    """
+    Get up to 500 Wikidata item pages that link to target_qid.
+
+    This uses the MediaWiki API equivalent of:
+
+        https://www.wikidata.org/w/index.php?title=Special:WhatLinksHere/Q363402&limit=500
+
+    API equivalent:
+
+        action=query
+        list=backlinks
+        bltitle=Q363402
+        blnamespace=0
+        bllimit=500
+
+    Returns only titles that look like QIDs.
+    """
+    target_qid = validate_qid(target_qid)
+
+    if target_qid in _whatlinkshere_cache:
+        return _whatlinkshere_cache[target_qid]
+
+    params = {
+        "action": "query",
+        "list": "backlinks",
+        "bltitle": target_qid,
+        "blnamespace": 0,
+        "bllimit": min(limit, 500),
+        "format": "json",
+    }
+
+    try:
+        response = requests.get(
+            MEDIAWIKI_API,
+            params=params,
+            headers=HEADERS,
+            timeout=30,
+        )
+        response.raise_for_status()
+        data = response.json()
+
+        backlinks = data.get("query", {}).get("backlinks", [])
+        qids: Set[str] = set()
+
+        for item in backlinks:
+            title = str(item.get("title", "")).strip().upper()
+            if re.fullmatch(r"Q[1-9]\d*", title):
+                qids.add(title)
+
+        _whatlinkshere_cache[target_qid] = qids
+        return qids
+
+    except Exception as exc:
+        print(
+            f"Warning: could not fetch WhatLinksHere for {target_qid}: {exc}",
+            file=sys.stderr,
+        )
+        _whatlinkshere_cache[target_qid] = set()
+        return set()
 
 
 def run_sparql(query: str, timeout: int = 45, retries: int = 2) -> Dict[str, Any]:
@@ -387,30 +401,6 @@ def build_path_string(
     readable: bool,
     language: str = LABEL_LANGUAGE,
 ) -> str:
-    """
-    Convert ordered path_steps into a path string.
-
-    This function preserves the exact order in path_steps.
-
-    Example input:
-        [
-            ("entity", "Q503034"),
-            ("property", "P1346"),
-            ("entity", "Q36949"),
-            ("qualifier", "P1686"),
-            ("entity", "Q47221"),
-        ]
-
-    Raw output:
-        Q503034->P1346->Q36949->P1686->Q47221
-
-    Readable output:
-        Los Angeles Film Critics Association Award for Best Actor (Q503034)
-        ->winner (P1346)
-        ->Robert De Niro (Q36949)
-        ->for work (P1686)
-        ->Taxi Driver (Q47221)
-    """
     parts: List[str] = []
 
     for kind, value in path_steps:
@@ -427,17 +417,6 @@ def build_path_string(
 
 
 def readable_raw_connection_path(raw_path: str, language: str = LABEL_LANGUAGE) -> str:
-    """
-    Convert a raw path such as:
-        Q503034->P1346->Q36949->P1686->Q47221
-
-    into:
-        Los Angeles Film Critics Association Award for Best Actor (Q503034)
-        ->winner (P1346)
-        ->Robert De Niro (Q36949)
-        ->for work (P1686)
-        ->Taxi Driver (Q47221)
-    """
     raw_path = str(raw_path or "").strip()
 
     if not raw_path:
@@ -463,19 +442,10 @@ def readable_raw_connection_path(raw_path: str, language: str = LABEL_LANGUAGE) 
 
 
 # ============================================================
-# WIKIDATA JSON SNAK HELPERS
+# WIKIDATA JSON HELPERS
 # ============================================================
 
 def qid_from_snak(snak: Dict[str, Any]) -> Optional[str]:
-    """
-    Extract a QID from a Wikidata snak if the snak value is a Wikidata item.
-
-    Returns None for:
-      - novalue
-      - somevalue
-      - non-item values
-      - literal values
-    """
     if not isinstance(snak, dict):
         return None
 
@@ -515,35 +485,26 @@ def get_claims_from_entity_json(
 
 
 # ============================================================
-# ENTITY_1 PAGE-FIRST SEARCH
+# PAGE SCAN LOGIC
 # ============================================================
 
-def find_connections_on_entity1_page(qid1: str, qid2: str) -> List[ConnectionResult]:
+def find_connections_on_source_page(
+    source_qid: str,
+    target_qid: str,
+    source_name: str,
+    priority: int,
+) -> List[ConnectionResult]:
     """
-    Search only inside Entity_1's own Wikidata EntityData JSON.
+    Search inside source_qid's own Wikidata EntityData JSON for target_qid.
 
-    Case A: direct main statement value
+    Direct case:
+        source_qid -> property -> target_qid
 
-        Entity_1 -> property -> Entity_2
-
-    Example:
-
-        Q1214882 -> P170 -> Q363402
-
-    Case B: qualifier value on a statement
-
-        Entity_1 -> property -> main value -> qualifier -> Entity_2
-
-    Example:
-
-        Q503034 -> P1346 -> Q36949 -> P1686 -> Q47221
-
-    This is the important ordering fix.
-    The main property comes BEFORE the main value.
-    The qualifier property comes BEFORE the qualifier value.
+    Qualifier case:
+        source_qid -> property -> main value -> qualifier -> target_qid
     """
-    data = get_entity_json(qid1)
-    claims = get_claims_from_entity_json(data, qid1)
+    data = get_entity_json(source_qid)
+    claims = get_claims_from_entity_json(data, source_qid)
 
     results: List[ConnectionResult] = []
 
@@ -566,38 +527,25 @@ def find_connections_on_entity1_page(qid1: str, qid2: str) -> List[ConnectionRes
             mainsnak = statement.get("mainsnak", {})
             main_value_qid = qid_from_snak(mainsnak)
 
-            # ------------------------------------------------
-            # Case A:
-            # Entity_1 has a direct statement whose value is Entity_2.
-            #
-            # Correct path order:
-            #   Entity_1 -> property -> Entity_2
-            # ------------------------------------------------
-            if main_value_qid == qid2:
+            # Direct main-statement value:
+            #   source -> property -> target
+            if main_value_qid == target_qid:
                 results.append(
                     ConnectionResult(
                         property_ids=[property_id],
                         qualifier_ids=[],
                         path_steps=[
-                            ("entity", qid1),
+                            ("entity", source_qid),
                             ("property", property_id),
-                            ("entity", qid2),
+                            ("entity", target_qid),
                         ],
-                        source="entity1_statement_direct",
-                        priority=1,
+                        source=source_name,
+                        priority=priority,
                     )
                 )
 
-            # ------------------------------------------------
-            # Case B:
-            # Entity_1 has a statement whose qualifier value is Entity_2.
-            #
-            # Correct path order:
-            #   Entity_1 -> property -> main value -> qualifier -> Entity_2
-            #
-            # Example:
-            #   Q503034 -> P1346 -> Q36949 -> P1686 -> Q47221
-            # ------------------------------------------------
+            # Qualifier value:
+            #   source -> property -> main value -> qualifier -> target
             qualifiers = statement.get("qualifiers", {})
 
             if not isinstance(qualifiers, dict):
@@ -613,24 +561,23 @@ def find_connections_on_entity1_page(qid1: str, qid2: str) -> List[ConnectionRes
                 for qualifier_snak in qualifier_snaks:
                     qualifier_value_qid = qid_from_snak(qualifier_snak)
 
-                    if qualifier_value_qid != qid2:
+                    if qualifier_value_qid != target_qid:
                         continue
 
                     if main_value_qid:
                         path_steps = [
-                            ("entity", qid1),
+                            ("entity", source_qid),
                             ("property", property_id),
                             ("entity", main_value_qid),
                             ("qualifier", qualifier_id),
-                            ("entity", qid2),
+                            ("entity", target_qid),
                         ]
                     else:
-                        # Rare fallback: statement has no item-valued main value.
                         path_steps = [
-                            ("entity", qid1),
+                            ("entity", source_qid),
                             ("property", property_id),
                             ("qualifier", qualifier_id),
-                            ("entity", qid2),
+                            ("entity", target_qid),
                         ]
 
                     results.append(
@@ -638,8 +585,8 @@ def find_connections_on_entity1_page(qid1: str, qid2: str) -> List[ConnectionRes
                             property_ids=[property_id],
                             qualifier_ids=[qualifier_id],
                             path_steps=path_steps,
-                            source="entity1_statement_qualifier",
-                            priority=2,
+                            source=source_name,
+                            priority=priority + 1,
                         )
                     )
 
@@ -651,27 +598,11 @@ def find_connections_on_entity1_page(qid1: str, qid2: str) -> List[ConnectionRes
 # ============================================================
 
 def build_fallback_truthy_path_query(qid1: str, qid2: str, max_hops: int) -> str:
-    """
-    Fallback only.
-
-    This searches general outward truthy Wikidata graph paths.
-
-    It is intentionally lower priority than Entity_1 page scanning.
-
-    For example, this may find:
-        Q503034 -> P1346 -> Q36949 -> P800 -> Q47221
-
-    But if Entity_1's own qualifier path exists:
-        Q503034 -> P1346 -> Q36949 -> P1686 -> Q47221
-
-    then the fallback path is ignored.
-    """
     if max_hops < 1:
         raise ValueError("max_hops must be >= 1")
 
     union_blocks: List[str] = []
 
-    # 1-hop fallback:
     union_blocks.append(f"""
     {{
       wd:{qid1} ?p1 wd:{qid2} .
@@ -679,7 +610,6 @@ def build_fallback_truthy_path_query(qid1: str, qid2: str, max_hops: int) -> str
     }}
     """)
 
-    # 2-hop fallback:
     if max_hops >= 2:
         union_blocks.append(f"""
         {{
@@ -709,9 +639,9 @@ ORDER BY ?p1 ?p2 ?n1
 def find_fallback_truthy_paths(
     qid1: str,
     qid2: str,
-    max_hops: int,
+    priority: int,
 ) -> List[ConnectionResult]:
-    query = build_fallback_truthy_path_query(qid1, qid2, max_hops)
+    query = build_fallback_truthy_path_query(qid1, qid2, MAX_FALLBACK_HOPS)
     data = run_sparql(query)
     bindings = data.get("results", {}).get("bindings", [])
 
@@ -720,8 +650,6 @@ def find_fallback_truthy_paths(
     for row in bindings:
         p1 = extract_last_path_segment(row["p1"]["value"])
 
-        # 1-hop fallback:
-        #   Entity_1 -> property -> Entity_2
         if "p2" not in row:
             results.append(
                 ConnectionResult(
@@ -733,13 +661,11 @@ def find_fallback_truthy_paths(
                         ("entity", qid2),
                     ],
                     source="fallback_truthy_path",
-                    priority=100,
+                    priority=priority,
                 )
             )
             continue
 
-        # 2-hop fallback:
-        #   Entity_1 -> property1 -> intermediate -> property2 -> Entity_2
         p2 = extract_last_path_segment(row["p2"]["value"])
         n1 = extract_last_path_segment(row["n1"]["value"])
 
@@ -755,7 +681,7 @@ def find_fallback_truthy_paths(
                     ("entity", qid2),
                 ],
                 source="fallback_truthy_path",
-                priority=100,
+                priority=priority,
             )
         )
 
@@ -785,18 +711,6 @@ def deduplicate_connections(connections: List[ConnectionResult]) -> List[Connect
 
 
 def choose_best_connections(connections: List[ConnectionResult]) -> List[ConnectionResult]:
-    """
-    Keep only the best-priority explanation type.
-
-    Priority order:
-      1. Direct statement on Entity_1:
-            Entity_1 -> property -> Entity_2
-
-      2. Qualifier statement on Entity_1:
-            Entity_1 -> property -> main value -> qualifier -> Entity_2
-
-      100. Fallback graph path
-    """
     if not connections:
         return []
 
@@ -816,28 +730,82 @@ def choose_best_connections(connections: List[ConnectionResult]) -> List[Connect
     return best
 
 
-def find_best_connections(qid1: str, qid2: str) -> List[ConnectionResult]:
+def find_best_connections_bidirectional(qid1: str, qid2: str) -> List[ConnectionResult]:
     """
-    Main search function.
+    Bi-directional search.
 
-    Step 1:
-        Search Entity_1's own Wikidata page.
+    1. Try Entity_1 page:
+           qid1 -> qid2
 
-    Step 2:
-        Only if Entity_1's own page gives no result, use fallback graph search.
+    2. If not found, use WhatLinksHere on Entity_1.
+       If Entity_2 links to Entity_1, scan Entity_2 page:
+           qid2 -> qid1
+
+    3. If not found, fallback graph search:
+           qid1 -> qid2
+           qid2 -> qid1
     """
-    entity1_results = find_connections_on_entity1_page(qid1, qid2)
 
-    if entity1_results:
-        return choose_best_connections(entity1_results)
-
-    fallback_results = find_fallback_truthy_paths(
-        qid1,
-        qid2,
-        max_hops=MAX_FALLBACK_HOPS,
+    # --------------------------------------------------------
+    # Step 1: existing logic, Entity_1 page first.
+    # --------------------------------------------------------
+    forward_page_results = find_connections_on_source_page(
+        source_qid=qid1,
+        target_qid=qid2,
+        source_name="entity1_page_forward",
+        priority=1,
     )
 
-    return choose_best_connections(fallback_results)
+    if forward_page_results:
+        return choose_best_connections(forward_page_results)
+
+    # --------------------------------------------------------
+    # Step 2: WhatLinksHere-style incoming links to Entity_1.
+    #
+    # Equivalent page:
+    #   https://www.wikidata.org/w/index.php?title=Special:WhatLinksHere/Q363402&limit=500
+    #
+    # If Entity_2 is listed there, then Entity_2 links to Entity_1,
+    # so scan Entity_2's page for the reverse stored statement.
+    # --------------------------------------------------------
+    incoming_to_qid1 = get_whatlinkshere_qids(qid1, WHATLINKSHERE_LIMIT)
+
+    if qid2 in incoming_to_qid1:
+        reverse_page_results = find_connections_on_source_page(
+            source_qid=qid2,
+            target_qid=qid1,
+            source_name="whatlinkshere_reverse_entity2_page",
+            priority=10,
+        )
+
+        if reverse_page_results:
+            return choose_best_connections(reverse_page_results)
+
+    # --------------------------------------------------------
+    # Step 3: fallback graph search in both directions.
+    # This catches cases where the backlink API did not include the
+    # relevant page in the first 500, or where the relationship is
+    # discoverable through truthy graph paths.
+    # --------------------------------------------------------
+    fallback_forward = find_fallback_truthy_paths(
+        qid1=qid1,
+        qid2=qid2,
+        priority=100,
+    )
+
+    if fallback_forward:
+        return choose_best_connections(fallback_forward)
+
+    fallback_reverse = find_fallback_truthy_paths(
+        qid1=qid2,
+        qid2=qid1,
+        priority=110,
+    )
+
+    if fallback_reverse:
+        return choose_best_connections(fallback_reverse)
+
+    return []
 
 
 def summarize_connections(
@@ -948,7 +916,7 @@ def process_rows(rows: List[Dict[str, str]]) -> List[Dict[str, str]]:
             if not existence_cache[qid2]:
                 raise ValueError(f"Entity_2 does not exist on Wikidata: {qid2}")
 
-            connections = find_best_connections(qid1, qid2)
+            connections = find_best_connections_bidirectional(qid1, qid2)
 
             summary = summarize_connections(
                 connections,
