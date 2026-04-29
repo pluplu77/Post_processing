@@ -7,3 +7,6 @@ Grammy Award for Best Contemporary Folk Album (Q5593772),John Prine (Q520296),Jo
 Fair & Square (Q5429755),Grammy Award for Best Contemporary Folk Album (Q5593772),"Path1: Fair & Square (Q5429755)->producer (P162)->John Prine (Q520296)->award received (P166)->Grammy Award for Best Contemporary Folk Album (Q5593772)
 Path2: Fair & Square (Q5429755)->performer (P175)->John Prine (Q520296)->award received (P166)->Grammy Award for Best Contemporary Folk Album (Q5593772)",3,producer (P162);award received (P166);performer (P175),,
 Writers & Lovers (Q96415602),Grove Press (Q3777164),,,,,
+Nomadland (Q61740820),93rd Academy Awards (Q57246152),"Path1: Nomadland (Q61740820)->award received (P166)->Academy Award for Best Picture (Q102427)->statement is subject of (P805)->93rd Academy Awards (Q57246152)
+Path2: Nomadland (Q61740820)->award received (P166)->Academy Award for Best Director (Q103360)->statement is subject of (P805)->93rd Academy Awards (Q57246152)
+Path3: Nomadland (Q61740820)->award received (P166)->Academy Award for Best Actress (Q103618)->statement is subject of (P805)->93rd Academy Awards (Q57246152)",1,award received (P166),1,statement is subject of (P805)

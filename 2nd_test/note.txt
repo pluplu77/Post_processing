@@ -1,19 +1,35 @@
+Type1: empty_sparql_result     
+
 Correct complete/incomplete entities, wrong properties used.
+
 - formatted: 
     - Using entities:...
     - Using properties:...
-
 
 Strong singal for missing edge(triplet).
 - formatted: 
-    ...is not available in Wikidata.
-    - Using entities:...
-    - Using properties:...
+...is not available in Wikidata.
+- Using entities:...
+- Using properties:...
 
 Strong signal for missing edge. Wrong entity used. NER from scratch.
 - formatted: 
-    Using other (non-indexed) items:
+Using other (non-indexed) items:
 
+Type2: no_sparql_generated  
+
+
+Type3：sparql_execution_failed (execution)：
+
+Try re-run first.
+
+Missing entity:
+- formatted: 
+does not appear in any known entities or links in Wikidata related to...
+
+
+
+Type4: sparql_execution_failed (preprocessing):
 
 Nothing to use. Reason stops at surface level.
 - formatted:
