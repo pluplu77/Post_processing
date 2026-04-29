@@ -18,11 +18,12 @@
 #   Entity_1
 #   Entity_2
 #
-# Values may be raw QIDs:
+# Example:
+#   Entity_1,Entity_2
+#   Q503034,Q36949
 #   Q503034,Q47221
-#
-# Or readable cells containing QIDs:
-#   Los Angeles Film Critics Association Award for Best Actor (Q503034),Taxi Driver (Q47221)
+#   Q363402,Q1214882
+#   Q1214882,Q363402
 #
 # ============================================================
 # OUTPUT CSV FORMAT
@@ -36,47 +37,47 @@
 # Qualifier_list
 #
 # ============================================================
-# IMPORTANT LOGIC
+# SEARCH PRIORITY
 # ============================================================
-# This version searches Entity_1's own Wikidata statement page first.
+# 1. Search Entity_1's own Wikidata page first:
+#      https://www.wikidata.org/wiki/Special:EntityData/ENTITY_1.json
 #
-# Example:
+# 2. On Entity_1's page, search:
+#      A. direct main-statement value:
+#           Entity_1 -> property -> Entity_2
 #
-#   Entity_1 = Q503034
-#   Entity_2 = Q47221
+#      B. qualifier value:
+#           Entity_1 -> property -> main value -> qualifier -> Entity_2
 #
-# It reads:
+# 3. Only if Entity_1's own page gives no result, use a fallback
+#    outward truthy graph search.
 #
-#   https://www.wikidata.org/wiki/Special:EntityData/Q503034.json
+# ============================================================
+# IMPORTANT EXAMPLE
+# ============================================================
+# Q503034 = Los Angeles Film Critics Association Award for Best Actor
+# Q36949  = Robert De Niro
+# Q47221  = Taxi Driver
 #
-# Then scans Q503034's claims.
-#
-# For the LAFCA Best Actor example, Wikidata stores this as:
+# Wikidata stores:
 #
 #   Q503034
 #     P1346 winner
 #       main value: Q36949 Robert De Niro
-#       qualifier: P1686 for work = Q47221 Taxi Driver
+#       qualifier P1686 for work: Q47221 Taxi Driver
 #
-# So the preferred output path is:
+# Correct path:
+#
+#   Q503034 -> P1346 -> Q36949 -> P1686 -> Q47221
+#
+# Readable:
 #
 #   Los Angeles Film Critics Association Award for Best Actor (Q503034)
-#   ->Robert De Niro (Q36949)
-#   ->for work (P1686)
-#   ->Taxi Driver (Q47221)
+#   -> winner (P1346)
+#   -> Robert De Niro (Q36949)
+#   -> for work (P1686)
+#   -> Taxi Driver (Q47221)
 #
-# Property_list:
-#   winner (P1346)
-#
-# Qualifier_list:
-#   for work (P1686)
-#
-# This prevents a weaker fallback graph path like:
-#
-#   award -> winner -> Robert De Niro -> notable work -> Taxi Driver
-#
-# from being chosen when Entity_1's own statement qualifiers already explain
-# the relationship.
 # ============================================================
 
 from __future__ import annotations
@@ -102,11 +103,8 @@ OUTPUT_LABEL_CSV_PATH = "output_label_name.csv"
 
 LABEL_LANGUAGE = "en"
 
-# Used only as a fallback when Entity_1's own page does not contain
-# a direct statement or qualifier explanation.
 MAX_FALLBACK_HOPS = 2
 
-# Usually you do not want deprecated Wikidata statements.
 INCLUDE_DEPRECATED_STATEMENTS = False
 
 SPARQL_ENDPOINT = "https://query.wikidata.org/sparql"
@@ -115,7 +113,7 @@ WBGETENTITIES_API = "https://www.wikidata.org/w/api.php"
 
 HEADERS = {
     "Accept": "application/json",
-    "User-Agent": "WikidataEntity1FirstPathFinder/3.0 "
+    "User-Agent": "WikidataEntity1FirstPathFinder/4.0 "
                   "(Python requests; contact: your-email@example.com)",
 }
 
@@ -129,39 +127,40 @@ class ConnectionResult:
     """
     property_ids:
         Main Wikidata statement properties from Entity_1.
+
         Example:
             ["P1346"]
 
     qualifier_ids:
-        Qualifier properties on that statement.
+        Qualifier properties on the statement.
+
         Example:
             ["P1686"]
 
     path_steps:
-        Ordered display path.
+        The exact ordered connection path.
 
-        For direct Entity_1 statement:
-            Entity_1 -> Entity_2
+        Direct statement:
+            [
+                ("entity", "Q1214882"),
+                ("property", "P170"),
+                ("entity", "Q363402"),
+            ]
 
-        For Entity_1 statement with qualifier:
-            Entity_1 -> main statement value -> qualifier property -> Entity_2
-
-        Example:
+        Qualified statement:
             [
                 ("entity", "Q503034"),
+                ("property", "P1346"),
                 ("entity", "Q36949"),
                 ("qualifier", "P1686"),
                 ("entity", "Q47221"),
             ]
 
     source:
-        Explanation source:
-            "entity1_statement_direct"
-            "entity1_statement_qualifier"
-            "fallback_truthy_path"
+        Where this result came from.
 
     priority:
-        Lower number = better.
+        Lower number is better.
     """
     property_ids: List[str]
     qualifier_ids: List[str]
@@ -177,22 +176,28 @@ class ConnectionResult:
 def extract_qid_from_cell(cell_value: str) -> str:
     text = str(cell_value).strip().upper()
     match = re.search(r"Q[1-9]\d*", text)
+
     if not match:
         raise ValueError(f"Could not find a valid QID in: {cell_value}")
+
     return match.group(0)
 
 
 def validate_qid(qid: str) -> str:
     qid = str(qid).strip().upper()
+
     if not re.fullmatch(r"Q[1-9]\d*", qid):
         raise ValueError(f"Invalid QID: {qid}")
+
     return qid
 
 
 def validate_pid(pid: str) -> str:
     pid = str(pid).strip().upper()
+
     if not re.fullmatch(r"P[1-9]\d*", pid):
         raise ValueError(f"Invalid PID: {pid}")
+
     return pid
 
 
@@ -203,10 +208,12 @@ def extract_last_path_segment(uri: str) -> str:
 def unique_preserve_order(values: List[str]) -> List[str]:
     seen: Set[str] = set()
     output: List[str] = []
+
     for value in values:
         if value not in seen:
             seen.add(value)
             output.append(value)
+
     return output
 
 
@@ -214,7 +221,19 @@ def unique_preserve_order(values: List[str]) -> List[str]:
 # NETWORK HELPERS
 # ============================================================
 
+_entity_json_cache: Dict[str, Dict[str, Any]] = {}
+
+
 def get_entity_json(qid: str, timeout: int = 30, retries: int = 2) -> Dict[str, Any]:
+    """
+    Fetch EntityData JSON for a Wikidata item.
+
+    Uses:
+        https://www.wikidata.org/wiki/Special:EntityData/QID.json
+    """
+    if qid in _entity_json_cache:
+        return _entity_json_cache[qid]
+
     url = ENTITY_DATA_URL.format(qid)
     last_error: Optional[Exception] = None
 
@@ -226,9 +245,13 @@ def get_entity_json(qid: str, timeout: int = 30, retries: int = 2) -> Dict[str, 
                 timeout=timeout,
             )
             response.raise_for_status()
-            return response.json()
+            data = response.json()
+            _entity_json_cache[qid] = data
+            return data
+
         except Exception as exc:
             last_error = exc
+
             if attempt < retries:
                 time.sleep(1.5 * (attempt + 1))
             else:
@@ -263,8 +286,10 @@ def run_sparql(query: str, timeout: int = 45, retries: int = 2) -> Dict[str, Any
             )
             response.raise_for_status()
             return response.json()
+
         except Exception as exc:
             last_error = exc
+
             if attempt < retries:
                 time.sleep(1.5 * (attempt + 1))
             else:
@@ -282,6 +307,7 @@ _label_cache: Dict[Tuple[str, str], str] = {}
 
 def get_entity_or_property_label(entity_id: str, language: str = LABEL_LANGUAGE) -> str:
     cache_key = (entity_id, language)
+
     if cache_key in _label_cache:
         return _label_cache[cache_key]
 
@@ -307,6 +333,7 @@ def get_entity_or_property_label(entity_id: str, language: str = LABEL_LANGUAGE)
 
         entity_data = data.get("entities", {}).get(entity_id, {})
         labels = entity_data.get("labels", {})
+
         if language in labels:
             label = labels[language]["value"]
 
@@ -335,6 +362,7 @@ def readable_cell_entity(original_value: str, language: str = LABEL_LANGUAGE) ->
 
 def readable_pid_list(raw_value: str, language: str = LABEL_LANGUAGE) -> str:
     raw_value = str(raw_value or "").strip()
+
     if not raw_value:
         return ""
 
@@ -343,9 +371,13 @@ def readable_pid_list(raw_value: str, language: str = LABEL_LANGUAGE) -> str:
 
     for group in groups:
         pids = re.findall(r"P[1-9]\d*", group.upper())
+
         if not pids:
             continue
-        readable_groups.append(" / ".join(readable_property(pid, language) for pid in pids))
+
+        readable_groups.append(
+            " / ".join(readable_property(pid, language) for pid in pids)
+        )
 
     return ";".join(readable_groups)
 
@@ -355,6 +387,30 @@ def build_path_string(
     readable: bool,
     language: str = LABEL_LANGUAGE,
 ) -> str:
+    """
+    Convert ordered path_steps into a path string.
+
+    This function preserves the exact order in path_steps.
+
+    Example input:
+        [
+            ("entity", "Q503034"),
+            ("property", "P1346"),
+            ("entity", "Q36949"),
+            ("qualifier", "P1686"),
+            ("entity", "Q47221"),
+        ]
+
+    Raw output:
+        Q503034->P1346->Q36949->P1686->Q47221
+
+    Readable output:
+        Los Angeles Film Critics Association Award for Best Actor (Q503034)
+        ->winner (P1346)
+        ->Robert De Niro (Q36949)
+        ->for work (P1686)
+        ->Taxi Driver (Q47221)
+    """
     parts: List[str] = []
 
     for kind, value in path_steps:
@@ -371,7 +427,19 @@ def build_path_string(
 
 
 def readable_raw_connection_path(raw_path: str, language: str = LABEL_LANGUAGE) -> str:
+    """
+    Convert a raw path such as:
+        Q503034->P1346->Q36949->P1686->Q47221
+
+    into:
+        Los Angeles Film Critics Association Award for Best Actor (Q503034)
+        ->winner (P1346)
+        ->Robert De Niro (Q36949)
+        ->for work (P1686)
+        ->Taxi Driver (Q47221)
+    """
     raw_path = str(raw_path or "").strip()
+
     if not raw_path:
         return ""
 
@@ -400,11 +468,12 @@ def readable_raw_connection_path(raw_path: str, language: str = LABEL_LANGUAGE) 
 
 def qid_from_snak(snak: Dict[str, Any]) -> Optional[str]:
     """
-    Extract QID from a Wikidata snak if the snak value is a Wikidata item.
+    Extract a QID from a Wikidata snak if the snak value is a Wikidata item.
 
     Returns None for:
-      - no value
-      - some value with non-item datatype
+      - novalue
+      - somevalue
+      - non-item values
       - literal values
     """
     if not isinstance(snak, dict):
@@ -414,10 +483,12 @@ def qid_from_snak(snak: Dict[str, Any]) -> Optional[str]:
         return None
 
     datavalue = snak.get("datavalue")
+
     if not isinstance(datavalue, dict):
         return None
 
     value = datavalue.get("value")
+
     if not isinstance(value, dict):
         return None
 
@@ -430,11 +501,16 @@ def qid_from_snak(snak: Dict[str, Any]) -> Optional[str]:
     return f"Q{numeric_id}"
 
 
-def get_claims_from_entity_json(entity_json: Dict[str, Any], qid: str) -> Dict[str, List[Dict[str, Any]]]:
+def get_claims_from_entity_json(
+    entity_json: Dict[str, Any],
+    qid: str,
+) -> Dict[str, List[Dict[str, Any]]]:
     entity_data = entity_json.get("entities", {}).get(qid, {})
     claims = entity_data.get("claims", {})
+
     if not isinstance(claims, dict):
         return {}
+
     return claims
 
 
@@ -446,43 +522,25 @@ def find_connections_on_entity1_page(qid1: str, qid2: str) -> List[ConnectionRes
     """
     Search only inside Entity_1's own Wikidata EntityData JSON.
 
-    This is the preferred search.
-
-    It finds two important cases:
-
     Case A: direct main statement value
 
-        Entity_1 --Pxxx--> Entity_2
+        Entity_1 -> property -> Entity_2
 
-        Example:
-            Q503034 --P1346 winner--> Q36949
+    Example:
 
-        Output path:
-            Q503034->Q36949
-
-        Property_list:
-            P1346
-
-        Qualifier_list:
-            empty
+        Q1214882 -> P170 -> Q363402
 
     Case B: qualifier value on a statement
 
-        Entity_1 --Pxxx--> main value
-                    qualifier Pyyy --> Entity_2
+        Entity_1 -> property -> main value -> qualifier -> Entity_2
 
-        Example:
-            Q503034 --P1346 winner--> Q36949
-                    qualifier P1686 for work --> Q47221
+    Example:
 
-        Output path:
-            Q503034->Q36949->P1686->Q47221
+        Q503034 -> P1346 -> Q36949 -> P1686 -> Q47221
 
-        Property_list:
-            P1346
-
-        Qualifier_list:
-            P1686
+    This is the important ordering fix.
+    The main property comes BEFORE the main value.
+    The qualifier property comes BEFORE the qualifier value.
     """
     data = get_entity_json(qid1)
     claims = get_claims_from_entity_json(data, qid1)
@@ -501,14 +559,20 @@ def find_connections_on_entity1_page(qid1: str, qid2: str) -> List[ConnectionRes
                 continue
 
             rank = statement.get("rank")
+
             if rank == "deprecated" and not INCLUDE_DEPRECATED_STATEMENTS:
                 continue
 
             mainsnak = statement.get("mainsnak", {})
             main_value_qid = qid_from_snak(mainsnak)
 
+            # ------------------------------------------------
             # Case A:
             # Entity_1 has a direct statement whose value is Entity_2.
+            #
+            # Correct path order:
+            #   Entity_1 -> property -> Entity_2
+            # ------------------------------------------------
             if main_value_qid == qid2:
                 results.append(
                     ConnectionResult(
@@ -516,6 +580,7 @@ def find_connections_on_entity1_page(qid1: str, qid2: str) -> List[ConnectionRes
                         qualifier_ids=[],
                         path_steps=[
                             ("entity", qid1),
+                            ("property", property_id),
                             ("entity", qid2),
                         ],
                         source="entity1_statement_direct",
@@ -523,9 +588,18 @@ def find_connections_on_entity1_page(qid1: str, qid2: str) -> List[ConnectionRes
                     )
                 )
 
+            # ------------------------------------------------
             # Case B:
             # Entity_1 has a statement whose qualifier value is Entity_2.
+            #
+            # Correct path order:
+            #   Entity_1 -> property -> main value -> qualifier -> Entity_2
+            #
+            # Example:
+            #   Q503034 -> P1346 -> Q36949 -> P1686 -> Q47221
+            # ------------------------------------------------
             qualifiers = statement.get("qualifiers", {})
+
             if not isinstance(qualifiers, dict):
                 continue
 
@@ -542,22 +616,19 @@ def find_connections_on_entity1_page(qid1: str, qid2: str) -> List[ConnectionRes
                     if qualifier_value_qid != qid2:
                         continue
 
-                    # The best explanatory path needs the main statement value.
-                    # For the LAFCA example:
-                    #   Q503034 -> Q36949 -> P1686 -> Q47221
-                    #
-                    # If the main value is not a QID, fall back to:
-                    #   Q503034 -> P1686 -> Q47221
                     if main_value_qid:
                         path_steps = [
                             ("entity", qid1),
+                            ("property", property_id),
                             ("entity", main_value_qid),
                             ("qualifier", qualifier_id),
                             ("entity", qid2),
                         ]
                     else:
+                        # Rare fallback: statement has no item-valued main value.
                         path_steps = [
                             ("entity", qid1),
+                            ("property", property_id),
                             ("qualifier", qualifier_id),
                             ("entity", qid2),
                         ]
@@ -576,24 +647,31 @@ def find_connections_on_entity1_page(qid1: str, qid2: str) -> List[ConnectionRes
 
 
 # ============================================================
-# FALLBACK GRAPH SEARCH
+# FALLBACK TRUTHY GRAPH SEARCH
 # ============================================================
 
 def build_fallback_truthy_path_query(qid1: str, qid2: str, max_hops: int) -> str:
     """
     Fallback only.
 
-    This searches general truthy Wikidata graph paths.
+    This searches general outward truthy Wikidata graph paths.
 
-    It is intentionally lower priority than scanning Entity_1's own
-    statements and qualifiers.
+    It is intentionally lower priority than Entity_1 page scanning.
+
+    For example, this may find:
+        Q503034 -> P1346 -> Q36949 -> P800 -> Q47221
+
+    But if Entity_1's own qualifier path exists:
+        Q503034 -> P1346 -> Q36949 -> P1686 -> Q47221
+
+    then the fallback path is ignored.
     """
     if max_hops < 1:
         raise ValueError("max_hops must be >= 1")
 
     union_blocks: List[str] = []
 
-    # 1-hop:
+    # 1-hop fallback:
     union_blocks.append(f"""
     {{
       wd:{qid1} ?p1 wd:{qid2} .
@@ -601,7 +679,7 @@ def build_fallback_truthy_path_query(qid1: str, qid2: str, max_hops: int) -> str
     }}
     """)
 
-    # 2-hop:
+    # 2-hop fallback:
     if max_hops >= 2:
         union_blocks.append(f"""
         {{
@@ -628,7 +706,11 @@ ORDER BY ?p1 ?p2 ?n1
     return query
 
 
-def find_fallback_truthy_paths(qid1: str, qid2: str, max_hops: int) -> List[ConnectionResult]:
+def find_fallback_truthy_paths(
+    qid1: str,
+    qid2: str,
+    max_hops: int,
+) -> List[ConnectionResult]:
     query = build_fallback_truthy_path_query(qid1, qid2, max_hops)
     data = run_sparql(query)
     bindings = data.get("results", {}).get("bindings", [])
@@ -638,7 +720,8 @@ def find_fallback_truthy_paths(qid1: str, qid2: str, max_hops: int) -> List[Conn
     for row in bindings:
         p1 = extract_last_path_segment(row["p1"]["value"])
 
-        # 1-hop fallback
+        # 1-hop fallback:
+        #   Entity_1 -> property -> Entity_2
         if "p2" not in row:
             results.append(
                 ConnectionResult(
@@ -655,7 +738,8 @@ def find_fallback_truthy_paths(qid1: str, qid2: str, max_hops: int) -> List[Conn
             )
             continue
 
-        # 2-hop fallback
+        # 2-hop fallback:
+        #   Entity_1 -> property1 -> intermediate -> property2 -> Entity_2
         p2 = extract_last_path_segment(row["p2"]["value"])
         n1 = extract_last_path_segment(row["n1"]["value"])
 
@@ -705,16 +789,13 @@ def choose_best_connections(connections: List[ConnectionResult]) -> List[Connect
     Keep only the best-priority explanation type.
 
     Priority order:
-      1. direct statement on Entity_1
-      2. qualifier statement on Entity_1
-      100. fallback graph path
+      1. Direct statement on Entity_1:
+            Entity_1 -> property -> Entity_2
 
-    For Q503034 -> Q47221, this selects:
-      Entity_1 statement qualifier:
-        winner / for work
+      2. Qualifier statement on Entity_1:
+            Entity_1 -> property -> main value -> qualifier -> Entity_2
 
-    and rejects fallback:
-      winner / notable work
+      100. Fallback graph path
     """
     if not connections:
         return []
@@ -740,10 +821,10 @@ def find_best_connections(qid1: str, qid2: str) -> List[ConnectionResult]:
     Main search function.
 
     Step 1:
-      Search Entity_1's own Wikidata page.
+        Search Entity_1's own Wikidata page.
 
     Step 2:
-      Only if nothing is found on Entity_1's page, use fallback graph search.
+        Only if Entity_1's own page gives no result, use fallback graph search.
     """
     entity1_results = find_connections_on_entity1_page(qid1, qid2)
 
@@ -785,21 +866,27 @@ def summarize_connections(
                 language=language,
             )
         )
+
         property_ids.extend(conn.property_ids)
         qualifier_ids.extend(conn.qualifier_ids)
 
     property_ids = unique_preserve_order(property_ids)
     qualifier_ids = unique_preserve_order(qualifier_ids)
+    path_strings = unique_preserve_order(path_strings)
 
     if readable:
-        property_list = ";".join(readable_property(pid, language) for pid in property_ids)
-        qualifier_list = ";".join(readable_property(pid, language) for pid in qualifier_ids)
+        property_list = ";".join(
+            readable_property(pid, language) for pid in property_ids
+        )
+        qualifier_list = ";".join(
+            readable_property(pid, language) for pid in qualifier_ids
+        )
     else:
         property_list = ";".join(property_ids)
         qualifier_list = ";".join(qualifier_ids)
 
     return {
-        "Connection_Path": "\n".join(unique_preserve_order(path_strings)),
+        "Connection_Path": "\n".join(path_strings),
         "Property_Number": len(property_ids) if property_ids else "",
         "Property_list": property_list,
         "Qualifier_Number": len(qualifier_ids) if qualifier_ids else "",
@@ -820,6 +907,7 @@ def read_input_rows(input_csv_path: str) -> List[Dict[str, str]]:
 
         required = {"Entity_1", "Entity_2"}
         missing = required - set(reader.fieldnames)
+
         if missing:
             raise ValueError(f"Missing required columns: {', '.join(sorted(missing))}")
 
@@ -828,7 +916,6 @@ def read_input_rows(input_csv_path: str) -> List[Dict[str, str]]:
 
 def process_rows(rows: List[Dict[str, str]]) -> List[Dict[str, str]]:
     processed_rows: List[Dict[str, str]] = []
-
     existence_cache: Dict[str, bool] = {}
 
     for row in tqdm(rows, desc="Processing rows", unit="row"):
@@ -862,6 +949,7 @@ def process_rows(rows: List[Dict[str, str]]) -> List[Dict[str, str]]:
                 raise ValueError(f"Entity_2 does not exist on Wikidata: {qid2}")
 
             connections = find_best_connections(qid1, qid2)
+
             summary = summarize_connections(
                 connections,
                 readable=False,
@@ -925,9 +1013,15 @@ def write_output_label_csv(
                 language,
             ),
             "Property_Number": row.get("Property_Number", ""),
-            "Property_list": readable_pid_list(row.get("Property_list", ""), language),
+            "Property_list": readable_pid_list(
+                row.get("Property_list", ""),
+                language,
+            ),
             "Qualifier_Number": row.get("Qualifier_Number", ""),
-            "Qualifier_list": readable_pid_list(row.get("Qualifier_list", ""), language),
+            "Qualifier_list": readable_pid_list(
+                row.get("Qualifier_list", ""),
+                language,
+            ),
         }
 
         readable_rows.append(readable_row)
@@ -965,6 +1059,7 @@ def main() -> int:
     print("Done.")
     print(f"Raw output written to: {OUTPUT_CSV_PATH}")
     print(f"Readable-label output written to: {OUTPUT_LABEL_CSV_PATH}")
+
     return 0
 
 
