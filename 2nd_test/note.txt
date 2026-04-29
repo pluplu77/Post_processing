@@ -5,3 +5,8 @@ Correct entities, wrong properties used.
 - formatted: 
     - Using entities:...
     - Using properties:...
+
+Type3:
+Nothing to use. Reason stops at surface level.
+- formatted:
+    Error executing SPARQL query over wikidata...(the input most likely does not follow the grammar).

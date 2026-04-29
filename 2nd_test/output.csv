@@ -1,3 +1,4 @@
 Entity_1,Entity_2,Connection_Path,Property_Number,Property_list,Qualifier_Number,Qualifier_list
 Q503034,Q36949,Q503034->Q36949,1,P1346,,
 Q503034,Q47221,Q503034->Q36949->P1686->Q47221,1,P1346,1,P1686
+Q363402,Q1214882,,,,,
