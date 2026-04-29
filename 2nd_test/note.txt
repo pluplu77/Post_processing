@@ -1,0 +1,7 @@
+Type1: 
+Correct entities, wrong properties used.
+- answer: a valid answer
+- explanation:null
+- formatted: 
+    - Using entities:...
+    - Using properties:...
