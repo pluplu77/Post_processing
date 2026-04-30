@@ -138,6 +138,12 @@ from tqdm import tqdm
 # Change these paths as needed.
 INPUT_CSV_PATH = "all_valid_cases.csv"
 OUTPUT_CSV_PATH = "derived_connection_output.csv"
+SKIPPED_REPORT_CSV_PATH = "derived_connection_skipped_report.csv"
+
+# If True, write one blank output row for input/result rows where no path can be
+# derived. The normal setting is False because blank rows are usually less useful
+# than a separate skipped report.
+WRITE_UNRESOLVED_ROWS = False
 
 LABEL_LANGUAGE = "en"
 
@@ -628,7 +634,7 @@ def parse_direct_wdt_edges(sparql: str) -> List[Edge]:
 
     token = r"(?:wd:Q[1-9]\d*|\?[A-Za-z_][A-Za-z0-9_]*)"
     pattern = re.compile(
-        rf"(?P<s>{token})\s+wdt:(?P<p>P[1-9]\d*)\s+(?P<o>{token})\s*\." ,
+        rf"(?P<s>{token})\s+wdt:(?P<p>P[1-9]\d*)\s+(?P<o>{token})(?=\s*(?:[.;}}]|$))",
         flags=re.IGNORECASE,
     )
 
@@ -672,21 +678,21 @@ def parse_qualifier_edges(sparql: str) -> List[Edge]:
     claim_pattern = re.compile(
         rf"(?P<subject>{subject_token})\s+"
         rf"p:(?P<mainprop>P[1-9]\d*)\s+"
-        rf"(?P<statement>{statement_token})\s*\.",
+        rf"(?P<statement>{statement_token})(?=\s*(?:[.;}}]|$))",
         flags=re.IGNORECASE,
     )
 
     ps_pattern = re.compile(
         rf"(?P<statement>{statement_token})\s+"
         rf"ps:(?P<mainprop>P[1-9]\d*)\s+"
-        rf"(?P<mainvalue>{object_token})\s*\.",
+        rf"(?P<mainvalue>{object_token})(?=\s*(?:[.;}}]|$))",
         flags=re.IGNORECASE,
     )
 
     pq_pattern = re.compile(
         rf"(?P<statement>{statement_token})\s+"
         rf"pq:(?P<qualprop>P[1-9]\d*)\s+"
-        rf"(?P<qualvalue>{object_token})\s*\.",
+        rf"(?P<qualvalue>{object_token})(?=\s*(?:[.;}}]|$))",
         flags=re.IGNORECASE,
     )
 
@@ -1124,26 +1130,101 @@ def read_source_rows(input_csv_path: str) -> List[Dict[str, str]]:
         return list(reader)
 
 
+
+def diagnose_unresolved_source_row(
+    source_row: Dict[str, str],
+    parsed_result_rows: List[Dict[str, Dict[str, str]]],
+) -> str:
+    """
+    Return a compact reason when a source row produced no derived paths.
+
+    This report is important because missing output rows are usually caused by
+    path-derivation limits, not by label API failures. Label API failures only
+    affect readable names; they should not prevent rows from being written.
+    """
+    sparql = source_row.get("sparql", "")
+
+    if not str(source_row.get("result", "")).strip():
+        return "empty result cell"
+
+    if not parsed_result_rows:
+        return "could not parse result as a Markdown table"
+
+    symbolic_edges = parse_sparql_edges(sparql)
+    if not symbolic_edges:
+        return (
+            "no supported SPARQL edges parsed; the query may use unsupported syntax "
+            "such as property paths, OPTIONAL/UNION-only patterns, VALUES, BIND, "
+            "SERVICE-only triples, literals, or aggregations"
+        )
+
+    any_instantiated_edges = False
+    any_candidate_pairs = False
+
+    for parsed_result_row in parsed_result_rows:
+        var_bindings, _row_labels = build_variable_bindings_and_row_labels(parsed_result_row)
+        instantiated_edges = instantiate_edges(symbolic_edges, var_bindings)
+        candidate_pairs = choose_candidate_entity_pairs(sparql, var_bindings)
+
+        if instantiated_edges:
+            any_instantiated_edges = True
+        if candidate_pairs:
+            any_candidate_pairs = True
+
+        for entity_1, entity_2 in candidate_pairs:
+            if find_paths_between_entities(instantiated_edges, entity_1, entity_2):
+                return "unexpected: diagnostic found a path"
+
+    if not any_instantiated_edges:
+        return (
+            "SPARQL edges were parsed, but their variables could not be filled "
+            "with QIDs from the result table"
+        )
+
+    if not any_candidate_pairs:
+        return (
+            "no candidate Entity_1/Entity_2 pair could be inferred from fixed wd:Q "
+            "anchors and selected result variables"
+        )
+
+    return "edges and candidate pairs exist, but no directed path connects them"
+
+
 def derive_all_path_groups(
     source_rows: List[Dict[str, str]],
     label_store: LabelStore,
-) -> List[Tuple[List[PathResult], Dict[str, str]]]:
+) -> Tuple[List[Tuple[List[PathResult], Dict[str, str]]], List[Dict[str, str]]]:
     """
     First pass over the data.
 
     It derives paths and collects labels that are already present in the result
     tables. It does not format the final output yet, because we want to batch
     fetch all missing labels first.
+
+    Returns:
+        all_groups:
+            Groups that will become output rows.
+
+        skipped_rows:
+            Diagnostic rows for source/result rows where no path could be
+            derived. These rows are written to SKIPPED_REPORT_CSV_PATH. This is
+            how you can tell whether missing rows were caused by unsupported
+            SPARQL shape, empty/non-table result, or unbound variables.
     """
     all_groups: List[Tuple[List[PathResult], Dict[str, str]]] = []
+    skipped_rows: List[Dict[str, str]] = []
 
-    for source_row in tqdm(source_rows, desc="Deriving paths", unit="source row"):
+    for source_index, source_row in enumerate(
+        tqdm(source_rows, desc="Deriving paths", unit="source row"),
+        start=1,
+    ):
         result_text = source_row.get("result", "")
         sparql = source_row.get("sparql", "")
 
         parsed_result_rows = parse_markdown_result_table(result_text)
+        source_row_produced_any_path = False
 
-        for parsed_result_row in parsed_result_rows:
+        for result_index, parsed_result_row in enumerate(parsed_result_rows, start=1):
             path_results, row_labels = derive_paths_for_result_row(
                 sparql=sparql,
                 parsed_result_row=parsed_result_row,
@@ -1155,11 +1236,28 @@ def derive_all_path_groups(
             if not path_results:
                 continue
 
+            source_row_produced_any_path = True
             grouped = group_path_results_by_pair(path_results)
             for grouped_paths in grouped.values():
                 all_groups.append((grouped_paths, row_labels))
 
-    return all_groups
+        if not source_row_produced_any_path:
+            reason = diagnose_unresolved_source_row(source_row, parsed_result_rows)
+            skipped_rows.append(
+                {
+                    "source_row_number": str(source_index),
+                    "reason": reason,
+                    "sparql_preview": str(sparql).replace("\n", " ")[:500],
+                    "result_preview": str(result_text).replace("\n", " ")[:500],
+                }
+            )
+
+            if WRITE_UNRESOLVED_ROWS:
+                # Optional blank output row. This preserves a closer row count,
+                # but the skipped report is usually more useful for debugging.
+                all_groups.append(([], {}))
+
+    return all_groups, skipped_rows
 
 
 def format_output_rows(
@@ -1198,6 +1296,22 @@ def write_output_csv(output_csv_path: str, rows: List[Dict[str, str]]) -> None:
         writer.writerows(rows)
 
 
+
+def write_skipped_report_csv(output_csv_path: str, rows: List[Dict[str, str]]) -> None:
+    """Write diagnostics for source rows that produced no derived output path."""
+    fieldnames = [
+        "source_row_number",
+        "reason",
+        "sparql_preview",
+        "result_preview",
+    ]
+
+    with open(output_csv_path, "w", encoding="utf-8", newline="") as outfile:
+        writer = csv.DictWriter(outfile, fieldnames=fieldnames)
+        writer.writeheader()
+        writer.writerows(rows)
+
+
 # ============================================================
 # MAIN
 # ============================================================
@@ -1208,7 +1322,7 @@ def main() -> int:
 
         source_rows = read_source_rows(INPUT_CSV_PATH)
 
-        all_groups = derive_all_path_groups(
+        all_groups, skipped_rows = derive_all_path_groups(
             source_rows=source_rows,
             label_store=label_store,
         )
@@ -1231,6 +1345,11 @@ def main() -> int:
             output_rows,
         )
 
+        write_skipped_report_csv(
+            SKIPPED_REPORT_CSV_PATH,
+            skipped_rows,
+        )
+
     except Exception as exc:
         print(f"Error: {exc}", file=sys.stderr)
         return 1
@@ -1239,6 +1358,8 @@ def main() -> int:
     print(f"Input read from: {INPUT_CSV_PATH}")
     print(f"Output written to: {OUTPUT_CSV_PATH}")
     print(f"Rows written: {len(output_rows)}")
+    print(f"Skipped source rows: {len(skipped_rows)}")
+    print(f"Skipped report written to: {SKIPPED_REPORT_CSV_PATH}")
     return 0
 
 
