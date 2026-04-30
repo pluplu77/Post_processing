@@ -1,18 +1,20 @@
 #!/usr/bin/env python3
 """
-derive_connection_paths_from_sparql_results.py
+derive_connection_paths_from_sparql_results_v4_literals.py
 
 Purpose
 -------
-This script reads an input CSV that contains two important columns:
+Read an input CSV containing SPARQL queries and their result tables, then derive
+connection paths directly from the two columns:
 
     result
     sparql
 
-Each row represents a SPARQL query and the query result table. The script derives
-Wikidata connection paths directly from those two columns and writes a new CSV
-with this schema:
+The output CSV keeps the input question and gold answer as the first two columns,
+then writes this schema:
 
+    question,
+    gold_answer,
     Entity_1,
     Entity_2,
     Connection_Path,
@@ -21,100 +23,106 @@ with this schema:
     Qualifier_Number,
     Qualifier_list
 
-Label strategy
---------------
-The script prioritizes labels already present in the input CSV:
-
-1. First, it reads labels from the `result` Markdown table.
-   Example cell:
-
-       Hamilton (wd:Q84323848)
-
-   gives:
-
-       Q84323848 -> Hamilton
-
-   Example label cell:
-
-       Hamilton (lang:en)
-
-   can also be matched to the base variable if the column is named entityLabel.
-
-2. If a QID, PID, or qualifier PID does not have a label in the CSV, the script
-   falls back to the Wikidata API:
-
-       https://www.wikidata.org/w/api.php?action=wbgetentities
-
-Path strategy
--------------
-The script does NOT use Wikidata to discover paths. It discovers paths from the
+Main idea
+---------
+The script does not query Wikidata to discover paths. It derives paths from the
 SPARQL text itself.
 
-For example, this SPARQL triple:
+Example entity-valued query:
 
-    wd:Q1646482 wdt:P800 ?entity .
+    SELECT ?entity WHERE {
+      wd:Q1646482 wdt:P800 ?entity .
+    }
 
-means:
-
-    Q1646482 -> P800 -> ?entity
-
-Then the result table tells us the concrete value of ?entity, such as:
-
-    Hamilton (wd:Q84323848)
-
-So the final readable path can be:
+If the result table binds ?entity to Hamilton (wd:Q84323848), the derived path is:
 
     Lin-Manuel Miranda (Q1646482)->notable work (P800)->Hamilton (Q84323848)
 
+Example literal-valued query:
+
+    SELECT ?duration WHERE {
+      wd:Q18758167 wdt:P2047 ?duration
+    }
+
+If the result table binds ?duration to 252.0 (xsd:decimal), the output is:
+
+    Entity_1:        Love Me like You Do (Q18758167)
+    Entity_2:        xsd:decimal
+    Connection_Path: Love Me like You Do (Q18758167)->duration (P2047)->xsd:decimal
+
+Label strategy
+--------------
+Labels are resolved in this order:
+
+1. Labels already present in the `result` table.
+   For example:
+       Hamilton (wd:Q84323848)
+       Hamilton (lang:en)
+
+2. Labels already seen in other rows of the same input CSV.
+
+3. Wikidata wbgetentities API, only for IDs still missing labels.
+   This includes:
+       QIDs
+       PIDs
+       qualifier PIDs
+
+4. Raw ID fallback.
+   If the API is unavailable, the script still writes rows using raw IDs.
+
+Literal strategy
+----------------
+If a selected result variable is not a Wikidata entity but has a datatype such as:
+
+    252.0 (xsd:decimal)
+    2015-01-01 (xsd:dateTime)
+
+then the script uses the datatype as the second endpoint. This allows literal
+paths to be written instead of skipped.
+
 Supported SPARQL patterns
 -------------------------
-This script supports common Wikidata patterns:
+This is a practical parser for common Wikidata query patterns, not a full SPARQL
+engine. It supports:
 
 1. Direct truthy properties:
+       wd:Q1 wdt:P123 ?x
+       ?x wdt:P456 wd:Q2
+       ?x wdt:P789 ?y
 
-       wd:Q1 wdt:P123 ?x .
-       ?x wdt:P456 wd:Q2 .
-       ?x wdt:P789 ?y .
-
-2. Statement/qualifier paths:
-
+2. Statement/qualifier patterns:
        wd:Q1 p:P1346 ?statement .
        ?statement ps:P1346 ?winner .
        ?statement pq:P1686 ?work .
 
    This becomes:
-
        Q1 -> P1346 -> winner -> P1686 -> work
 
-   where P1346 is counted as a property and P1686 is counted as a qualifier.
+   P1346 is counted in Property_list.
+   P1686 is counted in Qualifier_list.
 
-3. Multiple paths in one query. The output path is formatted as:
-
+3. Multiple paths between the same pair. These are formatted as:
        Path1: ...
        Path2: ...
 
-Limitations
------------
-The script is intentionally conservative. It derives paths only from explicit
-SPARQL triple patterns in the `sparql` column. If the relationship is not
-present in the SPARQL, the script cannot infer it from the result alone.
-
-It does not fully parse every possible SPARQL feature, such as complex OPTIONAL,
-UNION semantics, property paths like wdt:P31/wdt:P279*, SERVICE blocks, BINDed
-IRIs, VALUES tables, or nested subqueries. It handles the common direct and
-qualifier patterns used in many Wikidata QA datasets.
+Known limitations
+-----------------
+The script does not fully implement SPARQL. It intentionally focuses on common
+Wikidata QA patterns. It may skip queries that rely on complex UNION semantics,
+property paths such as wdt:P31/wdt:P279*, BIND-created IRIs, VALUES-only data,
+subqueries, aggregations, or SERVICE-only label lookups.
 
 How to run
 ----------
 1. Install dependencies:
-
        pip install requests tqdm
 
-2. Set INPUT_CSV_PATH below.
+   `tqdm` is optional. If it is not installed, the script still runs.
+
+2. Put this script next to your input CSV or edit INPUT_CSV_PATH below.
 
 3. Run:
-
-       python derive_connection_paths_from_sparql_results.py
+       python derive_connection_paths_from_sparql_results_v4_literals.py
 """
 
 from __future__ import annotations
@@ -125,51 +133,56 @@ import sys
 import time
 from collections import defaultdict, deque
 from dataclasses import dataclass
-from typing import Any, Dict, Iterable, List, Optional, Set, Tuple
+from typing import Dict, Iterable, List, Optional, Set, Tuple
 
-import requests
-from tqdm import tqdm
+try:
+    import requests
+except Exception:  # pragma: no cover - handled at runtime
+    requests = None  # type: ignore
+
+try:
+    from tqdm import tqdm
+except Exception:  # pragma: no cover - tqdm is optional
+    def tqdm(iterable, **kwargs):  # type: ignore
+        return iterable
 
 
 # ============================================================
 # CONFIG
 # ============================================================
 
-# Change these paths as needed.
 INPUT_CSV_PATH = "all_valid_cases.csv"
 OUTPUT_CSV_PATH = "derived_connection_output.csv"
 SKIPPED_REPORT_CSV_PATH = "derived_connection_skipped_report.csv"
 
-# If True, write one blank output row for input/result rows where no path can be
-# derived. The normal setting is False because blank rows are usually less useful
-# than a separate skipped report.
-WRITE_UNRESOLVED_ROWS = False
-
 LABEL_LANGUAGE = "en"
 
-# If True, missing QID/PID labels are fetched from Wikidata.
-# The script still prioritizes labels already present in the input CSV.
+# If True, missing QID/PID labels are fetched from Wikidata. Labels found in the
+# input result table are always preferred and are not fetched again.
 USE_WIKIDATA_API_FOR_MISSING_LABELS = True
 
-# Batch size for wbgetentities. Wikidata allows many IDs in one request, but
-# keeping the batch moderate is friendlier to the public API.
+# Batch size for wbgetentities. 40 is conservative and API-friendly.
 WIKIDATA_LABEL_BATCH_SIZE = 40
 
-# Sleep between API batches. Increase this if you process very large files.
+# Polite pause between label API batches.
 WIKIDATA_API_SLEEP_SECONDS = 0.05
 
 WBGETENTITIES_API = "https://www.wikidata.org/w/api.php"
 
 HEADERS = {
     "User-Agent": (
-        "SPARQLResultConnectionPathDeriver/2.0 "
+        "SPARQLResultConnectionPathDeriver/4.0 "
         "(Python requests; contact: your-email@example.com)"
     )
 }
 
-# Maximum number of graph edges to traverse when connecting instantiated SPARQL
-# triples. Most generated QA paths are short, usually 1-3 edges.
+# Maximum number of edges to traverse in the instantiated graph from one result
+# row. Most QA paths are short.
 MAX_PATH_EDGES = 5
+
+# If True, write a blank output row for source rows where no path was derived.
+# Usually False is cleaner because the skipped report explains what happened.
+WRITE_UNRESOLVED_ROWS = False
 
 
 # ============================================================
@@ -177,19 +190,45 @@ MAX_PATH_EDGES = 5
 # ============================================================
 
 @dataclass(frozen=True)
+class Binding:
+    """
+    Concrete value for a SPARQL result variable.
+
+    kind:
+        "qid"     -> Wikidata item, e.g. Q84323848
+        "pid"     -> Wikidata property, e.g. P800
+        "literal" -> non-entity value, represented by a datatype such as xsd:decimal
+
+    value:
+        QID, PID, or literal endpoint token. For literals this is usually the
+        datatype, e.g. xsd:decimal.
+
+    label:
+        Human-readable label from the result cell when available. For literals,
+        this is usually the literal lexical value, e.g. 252.0.
+    """
+
+    kind: str
+    value: str
+    label: str = ""
+    datatype: str = ""
+
+
+@dataclass(frozen=True)
 class Edge:
     """
     One directed edge parsed from the SPARQL.
 
-    source and target may initially be either:
-        - QIDs, such as Q1646482
+    Before instantiation, source and target may be either:
+        - QIDs such as Q1646482
         - variable names without '?', such as entity
 
-    pid is always a property ID, such as P800.
+    After instantiation, source is normally a QID and target may be a QID or a
+    literal endpoint such as xsd:decimal.
 
     edge_type:
-        "property"  = normal direct/main property
-        "qualifier" = qualifier property, usually from pq:Pxxx
+        "property"  -> normal direct/main property
+        "qualifier" -> qualifier property from pq:Pxxx
     """
 
     source: str
@@ -200,10 +239,10 @@ class Edge:
 
 @dataclass(frozen=True)
 class PathResult:
-    """
-    One concrete path after variables have been filled with QIDs from a result row.
-    """
+    """One concrete output path."""
 
+    question: str
+    gold_answer: str
     entity_1: str
     entity_2: str
     path_tokens: Tuple[str, ...]
@@ -212,19 +251,16 @@ class PathResult:
 
 
 # ============================================================
-# GENERIC HELPERS
+# BASIC HELPERS
 # ============================================================
 
 def unique_preserve_order(values: Iterable[str]) -> List[str]:
-    """Return unique values in first-seen order."""
     seen: Set[str] = set()
     output: List[str] = []
-
     for value in values:
         if value not in seen:
             seen.add(value)
             output.append(value)
-
     return output
 
 
@@ -234,6 +270,16 @@ def is_qid(value: str) -> bool:
 
 def is_pid(value: str) -> bool:
     return bool(re.fullmatch(r"P[1-9]\d*", str(value or "")))
+
+
+def is_wikidata_id(value: str) -> bool:
+    return is_qid(value) or is_pid(value)
+
+
+def is_literal_endpoint(value: str) -> bool:
+    """Return True for endpoints such as xsd:decimal, xsd:dateTime, literal."""
+    value = str(value or "")
+    return bool(re.fullmatch(r"[A-Za-z_][A-Za-z0-9_.-]*:[A-Za-z_][A-Za-z0-9_.-]*", value)) or value == "literal"
 
 
 def normalize_sparql_token(token: str) -> str:
@@ -249,12 +295,8 @@ def normalize_sparql_token(token: str) -> str:
         ?entity     -> entity
         <.../Q1>    -> Q1, if the IRI ends in Q1
     """
-    token = str(token or "").strip()
+    token = str(token or "").strip().rstrip(".;,")
 
-    # Remove trailing punctuation sometimes caught by loose parsing.
-    token = token.rstrip(".;,")
-
-    # Full IRI forms.
     iri_match = re.search(r"/(Q[1-9]\d*|P[1-9]\d*)>?$", token)
     if iri_match:
         return iri_match.group(1)
@@ -270,11 +312,9 @@ def normalize_sparql_token(token: str) -> str:
 
 
 def strip_sparql_comments(sparql: str) -> str:
-    """Remove line comments from SPARQL."""
-    lines = []
+    """Remove line comments. This simple heuristic does not parse string literals."""
+    lines: List[str] = []
     for line in str(sparql or "").splitlines():
-        # Remove comments that start with #. This is a simple heuristic and does
-        # not try to handle # inside string literals.
         lines.append(re.sub(r"#.*$", "", line))
     return "\n".join(lines)
 
@@ -285,13 +325,13 @@ def strip_sparql_comments(sparql: str) -> str:
 
 class LabelStore:
     """
-    Stores labels found in the input CSV and fetches missing labels from Wikidata.
+    Store labels found in the CSV and fetch missing labels from Wikidata.
 
-    Priority:
-        1. row-level labels from the `result` table
-        2. global labels already discovered from other rows
+    Priority order:
+        1. labels found in the current result row
+        2. labels found in previous result rows
         3. Wikidata API fallback
-        4. raw ID if no label is available
+        4. raw ID fallback
     """
 
     def __init__(self, language: str = LABEL_LANGUAGE) -> None:
@@ -302,17 +342,12 @@ class LabelStore:
     def add_label(self, entity_id: str, label: str) -> None:
         entity_id = str(entity_id or "").strip().upper()
         label = str(label or "").strip()
-
         if not entity_id or not label:
             return
-
-        if not (is_qid(entity_id) or is_pid(entity_id)):
+        if not is_wikidata_id(entity_id):
             return
-
-        # Do not overwrite a good label with the raw ID.
         if label == entity_id:
             return
-
         self.global_labels.setdefault(entity_id, label)
 
     def add_labels(self, labels: Dict[str, str]) -> None:
@@ -320,19 +355,17 @@ class LabelStore:
             self.add_label(entity_id, label)
 
     def fetch_missing_labels(self, ids: Iterable[str]) -> None:
-        """
-        Fetch missing QID/PID labels in batches.
-
-        This is called after collecting the IDs needed for the output. It avoids
-        doing one HTTP request per token.
-        """
+        """Fetch missing QID/PID labels in batches."""
         if not USE_WIKIDATA_API_FOR_MISSING_LABELS:
+            return
+        if requests is None:
+            print("Warning: requests is not installed; using raw IDs for missing labels.", file=sys.stderr)
             return
 
         ids_to_fetch = [
             item_id
             for item_id in unique_preserve_order(ids)
-            if (is_qid(item_id) or is_pid(item_id))
+            if is_wikidata_id(item_id)
             and item_id not in self.global_labels
             and item_id not in self.missing_cache
         ]
@@ -364,38 +397,37 @@ class LabelStore:
                 for item_id in batch:
                     entity_data = entities.get(item_id, {})
                     labels = entity_data.get("labels", {})
-                    lang_label = labels.get(self.language, {})
-                    value = lang_label.get("value", "")
-
+                    value = labels.get(self.language, {}).get("value", "")
                     if value:
                         self.global_labels[item_id] = value
                     else:
                         self.missing_cache.add(item_id)
 
             except Exception as exc:
-                print(
-                    f"Warning: failed to fetch labels for batch {batch}: {exc}",
-                    file=sys.stderr,
-                )
+                print(f"Warning: failed to fetch labels for batch {batch}: {exc}", file=sys.stderr)
                 self.missing_cache.update(batch)
 
             time.sleep(WIKIDATA_API_SLEEP_SECONDS)
 
     def label_for(self, entity_id: str, row_labels: Optional[Dict[str, str]] = None) -> str:
         entity_id = str(entity_id or "").strip().upper()
-
         if row_labels and entity_id in row_labels:
             return row_labels[entity_id]
-
         if entity_id in self.global_labels:
             return self.global_labels[entity_id]
-
         return entity_id
 
-    def readable_id(self, entity_id: str, row_labels: Optional[Dict[str, str]] = None) -> str:
-        entity_id = str(entity_id or "").strip().upper()
-        label = self.label_for(entity_id, row_labels)
-        return f"{label} ({entity_id})"
+    def readable_id(self, token: str, row_labels: Optional[Dict[str, str]] = None) -> str:
+        """
+        Format QIDs/PIDs as Label (ID). Literal endpoints such as xsd:decimal are
+        returned as-is.
+        """
+        token = str(token or "").strip()
+        if is_wikidata_id(token):
+            token_upper = token.upper()
+            label = self.label_for(token_upper, row_labels)
+            return f"{label} ({token_upper})"
+        return token
 
 
 # ============================================================
@@ -403,12 +435,7 @@ class LabelStore:
 # ============================================================
 
 def split_markdown_row(line: str) -> List[str]:
-    """
-    Split a simple Markdown table row.
-
-    This assumes the cells themselves do not contain unescaped vertical bars.
-    That matches the common format in the provided CSV.
-    """
+    """Split a simple Markdown table row."""
     line = line.strip()
     if line.startswith("|"):
         line = line[1:]
@@ -425,7 +452,8 @@ def parse_result_cell(cell: str) -> Dict[str, str]:
         Hamilton (wd:Q84323848)
         Hamilton (lang:en)
         winner (wdt:P1346)
-        for work (wd:P1686)
+        252.0 (xsd:decimal)
+        2015-01-01 (xsd:dateTime)
         Q123
         P456
     """
@@ -437,6 +465,8 @@ def parse_result_cell(cell: str) -> Dict[str, str]:
         "pid": "",
         "id": "",
         "label": "",
+        "literal_value": "",
+        "datatype": "",
     }
 
     # Entity/property with Wikidata-style prefix inside parentheses.
@@ -448,7 +478,6 @@ def parse_result_cell(cell: str) -> Dict[str, str]:
             "",
             cell,
         ).strip()
-
         parsed["id"] = item_id
         parsed["label"] = label
         if is_qid(item_id):
@@ -457,7 +486,18 @@ def parse_result_cell(cell: str) -> Dict[str, str]:
             parsed["pid"] = item_id
         return parsed
 
-    # Literal label cell such as Hamilton (lang:en).
+    # Literal with datatype, e.g. 252.0 (xsd:decimal).
+    datatype_match = re.match(
+        r"^(?P<value>.*?)\s*\((?P<datatype>[A-Za-z_][A-Za-z0-9_.-]*:[A-Za-z_][A-Za-z0-9_.-]*)\)\s*$",
+        cell,
+    )
+    if datatype_match:
+        parsed["literal_value"] = datatype_match.group("value").strip()
+        parsed["datatype"] = datatype_match.group("datatype").strip()
+        parsed["label"] = parsed["literal_value"]
+        return parsed
+
+    # Language-tagged label cell such as Hamilton (lang:en).
     label_match = re.match(r"(.+?)\s*\(lang:[^)]+\)\s*$", cell)
     if label_match:
         parsed["label"] = label_match.group(1).strip()
@@ -475,34 +515,17 @@ def parse_result_cell(cell: str) -> Dict[str, str]:
             parsed["pid"] = item_id
         return parsed
 
-    parsed["label"] = cell
+    # Generic literal fallback. We keep this as a literal endpoint named "literal".
+    if cell:
+        parsed["literal_value"] = cell
+        parsed["datatype"] = "literal"
+        parsed["label"] = cell
+
     return parsed
 
 
 def parse_markdown_result_table(result_text: str) -> List[Dict[str, Dict[str, str]]]:
-    """
-    Parse a Markdown result table from the `result` column.
-
-    Returns a list of result rows. Each row is a mapping:
-
-        column name -> parsed cell dict
-
-    Example return:
-
-        [
-            {
-                "entity": {
-                    "qid": "Q84323848",
-                    "label": "Hamilton",
-                    ...
-                },
-                "label": {
-                    "label": "Hamilton",
-                    ...
-                }
-            }
-        ]
-    """
+    """Parse a Markdown table from the `result` column."""
     text = str(result_text or "").strip()
     lines = [line.strip() for line in text.splitlines() if line.strip()]
 
@@ -514,10 +537,8 @@ def parse_markdown_result_table(result_text: str) -> List[Dict[str, Dict[str, st
     rows: List[Dict[str, Dict[str, str]]] = []
 
     for line in table_lines[1:]:
-        # Skip separator row like | ----- | ----- |
         if re.fullmatch(r"\|?\s*[-:\s|]+\s*\|?", line):
             continue
-
         cells = split_markdown_row(line)
         if len(cells) != len(headers):
             continue
@@ -525,7 +546,6 @@ def parse_markdown_result_table(result_text: str) -> List[Dict[str, Dict[str, st
         parsed_row: Dict[str, Dict[str, str]] = {}
         for header, cell in zip(headers, cells):
             parsed_row[header.strip()] = parse_result_cell(cell)
-
         rows.append(parsed_row)
 
     return rows
@@ -533,63 +553,67 @@ def parse_markdown_result_table(result_text: str) -> List[Dict[str, Dict[str, st
 
 def build_variable_bindings_and_row_labels(
     parsed_result_row: Dict[str, Dict[str, str]]
-) -> Tuple[Dict[str, str], Dict[str, str]]:
+) -> Tuple[Dict[str, Binding], Dict[str, str]]:
     """
-    Build variable bindings and labels from one parsed result row.
+    Build variable bindings and row-level labels from one result table row.
 
     Returns:
         var_bindings:
-            SPARQL variable name -> concrete QID/PID
+            variable name -> Binding
 
         row_labels:
-            QID/PID -> label from this row
+            QID/PID -> label found in this result row
 
-    Notes:
-        - Variables are represented without the leading '?'.
-        - QID-valued and PID-valued result cells are both bound.
-        - Columns named somethingLabel are used as labels for something.
+    Important fix:
+        A variable whose name ends with Label is NOT automatically ignored. If a
+        cell contains a QID, it is treated as an entity even if the variable name
+        is ?recordLabel or similar.
     """
-    var_bindings: Dict[str, str] = {}
+    var_bindings: Dict[str, Binding] = {}
     row_labels: Dict[str, str] = {}
 
-    # First pass: bind direct entity/property columns.
+    # First pass: bind QIDs/PIDs/literals.
     for column, cell in parsed_result_row.items():
         item_id = cell.get("id") or cell.get("qid") or cell.get("pid") or ""
         label = cell.get("label", "")
+        datatype = cell.get("datatype", "")
 
         if item_id:
-            var_bindings[column] = item_id
+            kind = "qid" if is_qid(item_id) else "pid"
+            var_bindings[column] = Binding(kind=kind, value=item_id, label=label)
             if label and label != item_id:
                 row_labels[item_id] = label
+            continue
 
-    # Second pass: match label columns to base columns.
-    # Common patterns:
-    #     entity + entityLabel
-    #     entity + label
+        if datatype:
+            # For output endpoints, use datatype rather than the literal value.
+            # Example: 252.0 (xsd:decimal) -> xsd:decimal
+            var_bindings[column] = Binding(
+                kind="literal",
+                value=datatype,
+                label=cell.get("literal_value", "") or label,
+                datatype=datatype,
+            )
+
+    # Second pass: attach label columns to their base entity variables.
     for column, cell in parsed_result_row.items():
         label = cell.get("label", "")
         if not label:
             continue
 
         possible_base_columns: List[str] = []
-
         if column.endswith("Label"):
             possible_base_columns.append(column[:-5])
 
         if column.lower() == "label":
-            # If there is exactly one QID-valued variable, the generic ?label
-            # column probably labels that variable.
-            qid_columns = [
-                name for name, value in var_bindings.items()
-                if is_qid(value)
-            ]
+            qid_columns = [name for name, binding in var_bindings.items() if binding.kind == "qid"]
             if len(qid_columns) == 1:
                 possible_base_columns.append(qid_columns[0])
 
         for base_column in possible_base_columns:
-            bound_id = var_bindings.get(base_column)
-            if bound_id:
-                row_labels[bound_id] = label
+            bound = var_bindings.get(base_column)
+            if bound and is_wikidata_id(bound.value):
+                row_labels[bound.value] = label
 
     return var_bindings, row_labels
 
@@ -606,7 +630,6 @@ def extract_select_variables(sparql: str) -> List[str]:
         query,
         flags=re.IGNORECASE | re.DOTALL,
     )
-
     if not match:
         return []
 
@@ -625,13 +648,10 @@ def parse_direct_wdt_edges(sparql: str) -> List[Edge]:
     """
     Parse simple direct truthy triples.
 
-    Supported examples:
-        wd:Q1 wdt:P123 ?entity .
-        ?entity wdt:P456 wd:Q2 .
-        ?a wdt:P31 ?b .
+    The object may be a QID or a variable. If the variable is bound to a literal
+    datatype in the result table, this later becomes a literal-valued path.
     """
     query = strip_sparql_comments(sparql)
-
     token = r"(?:wd:Q[1-9]\d*|\?[A-Za-z_][A-Za-z0-9_]*)"
     pattern = re.compile(
         rf"(?P<s>{token})\s+wdt:(?P<p>P[1-9]\d*)\s+(?P<o>{token})(?=\s*(?:[.;}}]|$))",
@@ -639,7 +659,6 @@ def parse_direct_wdt_edges(sparql: str) -> List[Edge]:
     )
 
     edges: List[Edge] = []
-
     for match in pattern.finditer(query):
         edges.append(
             Edge(
@@ -649,7 +668,6 @@ def parse_direct_wdt_edges(sparql: str) -> List[Edge]:
                 edge_type="property",
             )
         )
-
     return edges
 
 
@@ -665,9 +683,6 @@ def parse_qualifier_edges(sparql: str) -> List[Edge]:
     Parsed as:
         Q503034 -> P1346 -> winner
         winner  -> P1686 -> work
-
-    The first edge is edge_type='property'.
-    The second edge is edge_type='qualifier'.
     """
     query = strip_sparql_comments(sparql)
 
@@ -676,33 +691,20 @@ def parse_qualifier_edges(sparql: str) -> List[Edge]:
     statement_token = r"\?[A-Za-z_][A-Za-z0-9_]*"
 
     claim_pattern = re.compile(
-        rf"(?P<subject>{subject_token})\s+"
-        rf"p:(?P<mainprop>P[1-9]\d*)\s+"
-        rf"(?P<statement>{statement_token})(?=\s*(?:[.;}}]|$))",
+        rf"(?P<subject>{subject_token})\s+p:(?P<mainprop>P[1-9]\d*)\s+(?P<statement>{statement_token})(?=\s*(?:[.;}}]|$))",
         flags=re.IGNORECASE,
     )
-
     ps_pattern = re.compile(
-        rf"(?P<statement>{statement_token})\s+"
-        rf"ps:(?P<mainprop>P[1-9]\d*)\s+"
-        rf"(?P<mainvalue>{object_token})(?=\s*(?:[.;}}]|$))",
+        rf"(?P<statement>{statement_token})\s+ps:(?P<mainprop>P[1-9]\d*)\s+(?P<mainvalue>{object_token})(?=\s*(?:[.;}}]|$))",
         flags=re.IGNORECASE,
     )
-
     pq_pattern = re.compile(
-        rf"(?P<statement>{statement_token})\s+"
-        rf"pq:(?P<qualprop>P[1-9]\d*)\s+"
-        rf"(?P<qualvalue>{object_token})(?=\s*(?:[.;}}]|$))",
+        rf"(?P<statement>{statement_token})\s+pq:(?P<qualprop>P[1-9]\d*)\s+(?P<qualvalue>{object_token})(?=\s*(?:[.;}}]|$))",
         flags=re.IGNORECASE,
     )
 
-    # statement variable -> (subject, main property)
     claim_by_statement: Dict[str, Tuple[str, str]] = {}
-
-    # statement variable -> (main property, main value)
     main_value_by_statement: Dict[str, Tuple[str, str]] = {}
-
-    # statement variable -> list of (qualifier property, qualifier value)
     qualifiers_by_statement: Dict[str, List[Tuple[str, str]]] = defaultdict(list)
 
     for match in claim_pattern.finditer(query):
@@ -724,44 +726,26 @@ def parse_qualifier_edges(sparql: str) -> List[Edge]:
         qualifiers_by_statement[statement].append((qualprop, qualvalue))
 
     edges: List[Edge] = []
-
     for statement, (subject, claim_mainprop) in claim_by_statement.items():
         if statement not in main_value_by_statement:
             continue
-
         ps_mainprop, mainvalue = main_value_by_statement[statement]
         if ps_mainprop != claim_mainprop:
             continue
 
-        edges.append(
-            Edge(
-                source=subject,
-                pid=claim_mainprop,
-                target=mainvalue,
-                edge_type="property",
-            )
-        )
-
+        edges.append(Edge(source=subject, pid=claim_mainprop, target=mainvalue, edge_type="property"))
         for qualprop, qualvalue in qualifiers_by_statement.get(statement, []):
-            edges.append(
-                Edge(
-                    source=mainvalue,
-                    pid=qualprop,
-                    target=qualvalue,
-                    edge_type="qualifier",
-                )
-            )
+            edges.append(Edge(source=mainvalue, pid=qualprop, target=qualvalue, edge_type="qualifier"))
 
     return edges
 
 
 def parse_sparql_edges(sparql: str) -> List[Edge]:
-    """Parse all supported edge types from SPARQL."""
+    """Parse all supported edge types from SPARQL and de-duplicate them."""
     edges: List[Edge] = []
     edges.extend(parse_direct_wdt_edges(sparql))
     edges.extend(parse_qualifier_edges(sparql))
 
-    # De-duplicate while preserving order.
     seen: Set[Edge] = set()
     output: List[Edge] = []
     for edge in edges:
@@ -775,54 +759,48 @@ def parse_sparql_edges(sparql: str) -> List[Edge]:
 # EDGE INSTANTIATION AND PATH DISCOVERY
 # ============================================================
 
-def instantiate_token(token: str, var_bindings: Dict[str, str]) -> Optional[str]:
-    """
-    Convert a symbolic token into a concrete QID/PID if possible.
-
-    QIDs and PIDs are already concrete. Variable names are looked up in the
-    result-row bindings.
-    """
+def instantiate_token(token: str, var_bindings: Dict[str, Binding]) -> Optional[str]:
+    """Convert a symbolic token into a concrete QID/PID/literal endpoint."""
     token = str(token or "").strip()
-
-    if is_qid(token) or is_pid(token):
+    if is_qid(token) or is_pid(token) or is_literal_endpoint(token):
         return token
+    binding = var_bindings.get(token)
+    if binding:
+        return binding.value
+    return None
 
-    return var_bindings.get(token)
 
-
-def instantiate_edges(edges: List[Edge], var_bindings: Dict[str, str]) -> List[Edge]:
-    """Fill SPARQL variables in edges using the current result row."""
+def instantiate_edges(edges: List[Edge], var_bindings: Dict[str, Binding]) -> List[Edge]:
+    """Fill variables in parsed edges using the current result row."""
     instantiated: List[Edge] = []
 
     for edge in edges:
         source = instantiate_token(edge.source, var_bindings)
         target = instantiate_token(edge.target, var_bindings)
 
-        # For our output, path nodes must be concrete QIDs. The predicate must be
-        # a concrete PID.
         if not source or not target:
-            continue
-        if not is_qid(source) or not is_qid(target):
             continue
         if not is_pid(edge.pid):
             continue
 
+        # Source nodes in Wikidata triples should be QIDs for this output. Target
+        # nodes may be QIDs or literal datatype endpoints.
+        if not is_qid(source):
+            continue
+        if not (is_qid(target) or is_literal_endpoint(target)):
+            continue
+
         instantiated.append(
-            Edge(
-                source=source,
-                pid=edge.pid,
-                target=target,
-                edge_type=edge.edge_type,
-            )
+            Edge(source=source, pid=edge.pid, target=target, edge_type=edge.edge_type)
         )
 
     return instantiated
 
 
-def find_paths_between_entities(
+def find_paths_between_nodes(
     edges: List[Edge],
-    start_qid: str,
-    target_qid: str,
+    start_node: str,
+    target_node: str,
     max_edges: int = MAX_PATH_EDGES,
 ) -> List[List[Edge]]:
     """Find simple directed paths in the instantiated SPARQL edge graph."""
@@ -831,90 +809,74 @@ def find_paths_between_entities(
         adjacency[edge.source].append(edge)
 
     found_paths: List[List[Edge]] = []
-    queue = deque([(start_qid, [], {start_qid})])
+    queue = deque([(start_node, [], {start_node})])
 
     while queue:
-        current_qid, path_edges, visited_nodes = queue.popleft()
-
+        current_node, path_edges, visited_nodes = queue.popleft()
         if len(path_edges) >= max_edges:
             continue
 
-        for edge in adjacency.get(current_qid, []):
-            if edge.target in visited_nodes and edge.target != target_qid:
+        for edge in adjacency.get(current_node, []):
+            if edge.target in visited_nodes and edge.target != target_node:
                 continue
 
             new_path_edges = path_edges + [edge]
-
-            if edge.target == target_qid:
+            if edge.target == target_node:
                 found_paths.append(new_path_edges)
                 continue
 
-            queue.append(
-                (
-                    edge.target,
-                    new_path_edges,
-                    visited_nodes | {edge.target},
-                )
-            )
+            # Literal endpoints cannot have outgoing Wikidata edges.
+            if is_literal_endpoint(edge.target):
+                continue
+
+            queue.append((edge.target, new_path_edges, visited_nodes | {edge.target}))
 
     return found_paths
 
 
 def edge_path_to_tokens(path_edges: List[Edge]) -> Tuple[str, ...]:
-    """
-    Convert edges into ordered tokens:
-
-        [Q1, P1, Q2, P2, Q3]
-    """
+    """Convert edges into ordered tokens: Q1, P1, Q2, P2, Q3."""
     if not path_edges:
         return tuple()
-
     tokens: List[str] = [path_edges[0].source]
     for edge in path_edges:
         tokens.append(edge.pid)
         tokens.append(edge.target)
-
     return tuple(tokens)
 
 
-def choose_candidate_entity_pairs(
+def choose_candidate_pairs(
     sparql: str,
-    var_bindings: Dict[str, str],
+    var_bindings: Dict[str, Binding],
 ) -> List[Tuple[str, str]]:
     """
-    Choose candidate entity pairs to try connecting.
+    Choose candidate endpoints to try connecting.
 
     Preferred pattern:
         fixed wd:Q anchors in the SPARQL connected to selected result variables.
 
-    Example:
-        SELECT ?entity ?label WHERE {
-          wd:Q1646482 wdt:P800 ?entity .
-        }
-
-    Candidate:
-        Q1646482 -> bound value of ?entity
-
-    Also tries the reverse direction because some queries are written as:
-
-        ?film wdt:P170 wd:Q363402 .
-
-    In that case, the actual path is selected film -> fixed Q363402.
+    Literal-valued variables are included as possible Entity_2 endpoints, but only
+    in the fixed-QID -> literal direction.
     """
     fixed_qids = extract_fixed_qids(sparql)
     select_vars = extract_select_variables(sparql)
 
     selected_qids: List[str] = []
+    selected_literals: List[str] = []
+
     for var in select_vars:
-        # Do not treat label variables as entities.
-        if var.lower().endswith("label"):
+        binding = var_bindings.get(var)
+        if not binding:
             continue
 
-        bound = var_bindings.get(var)
-        if bound and is_qid(bound):
-            selected_qids.append(bound)
+        # Do not ignore variables ending in Label if they actually contain QIDs.
+        if binding.kind == "qid":
+            selected_qids.append(binding.value)
+        elif binding.kind == "literal":
+            selected_literals.append(binding.value)
 
     selected_qids = unique_preserve_order(selected_qids)
+    selected_literals = unique_preserve_order(selected_literals)
 
     pairs: List[Tuple[str, str]] = []
 
@@ -925,7 +887,10 @@ def choose_candidate_entity_pairs(
             pairs.append((fixed_qid, selected_qid))
             pairs.append((selected_qid, fixed_qid))
 
-    # If there are no fixed anchors, try selected variable pairs.
+        for literal_endpoint in selected_literals:
+            pairs.append((fixed_qid, literal_endpoint))
+
+    # If there are no fixed anchors, try pairs among selected QIDs.
     if not pairs and len(selected_qids) >= 2:
         for i, left in enumerate(selected_qids):
             for right in selected_qids[i + 1:]:
@@ -934,59 +899,51 @@ def choose_candidate_entity_pairs(
                 pairs.append((left, right))
                 pairs.append((right, left))
 
-    # De-duplicate pairs.
     seen: Set[Tuple[str, str]] = set()
     output: List[Tuple[str, str]] = []
     for pair in pairs:
         if pair not in seen:
             seen.add(pair)
             output.append(pair)
-
     return output
 
 
 def derive_paths_for_result_row(
-    sparql: str,
+    source_row: Dict[str, str],
     parsed_result_row: Dict[str, Dict[str, str]],
 ) -> Tuple[List[PathResult], Dict[str, str]]:
-    """
-    Derive concrete paths for one SPARQL result row.
+    """Derive concrete paths for one parsed result row."""
+    sparql = source_row.get("sparql", "")
+    question = source_row.get("question", "")
+    gold_answer = source_row.get("gold_answer", "")
 
-    Returns:
-        path results
-        row-level labels
-    """
     var_bindings, row_labels = build_variable_bindings_and_row_labels(parsed_result_row)
-
     symbolic_edges = parse_sparql_edges(sparql)
     instantiated_edges = instantiate_edges(symbolic_edges, var_bindings)
 
     if not instantiated_edges:
         return [], row_labels
 
-    candidate_pairs = choose_candidate_entity_pairs(sparql, var_bindings)
-
+    candidate_pairs = choose_candidate_pairs(sparql, var_bindings)
     results: List[PathResult] = []
 
     for entity_1, entity_2 in candidate_pairs:
-        paths = find_paths_between_entities(
+        paths = find_paths_between_nodes(
             instantiated_edges,
-            start_qid=entity_1,
-            target_qid=entity_2,
+            start_node=entity_1,
+            target_node=entity_2,
             max_edges=MAX_PATH_EDGES,
         )
 
         for path_edges in paths:
-            property_ids = tuple(
-                edge.pid for edge in path_edges if edge.edge_type == "property"
-            )
-            qualifier_ids = tuple(
-                edge.pid for edge in path_edges if edge.edge_type == "qualifier"
-            )
+            property_ids = tuple(edge.pid for edge in path_edges if edge.edge_type == "property")
+            qualifier_ids = tuple(edge.pid for edge in path_edges if edge.edge_type == "qualifier")
             path_tokens = edge_path_to_tokens(path_edges)
 
             results.append(
                 PathResult(
+                    question=question,
+                    gold_answer=gold_answer,
                     entity_1=entity_1,
                     entity_2=entity_2,
                     path_tokens=path_tokens,
@@ -999,15 +956,19 @@ def derive_paths_for_result_row(
 
 
 def deduplicate_path_results(results: List[PathResult]) -> List[PathResult]:
-    seen: Set[Tuple[str, str, Tuple[str, ...]]] = set()
+    seen: Set[Tuple[str, str, str, str, Tuple[str, ...]]] = set()
     output: List[PathResult] = []
-
     for result in results:
-        key = (result.entity_1, result.entity_2, result.path_tokens)
+        key = (
+            result.question,
+            result.gold_answer,
+            result.entity_1,
+            result.entity_2,
+            result.path_tokens,
+        )
         if key not in seen:
             seen.add(key)
             output.append(result)
-
     return output
 
 
@@ -1016,17 +977,16 @@ def deduplicate_path_results(results: List[PathResult]) -> List[PathResult]:
 # ============================================================
 
 def collect_ids_needed_for_labels(path_results: Iterable[PathResult]) -> List[str]:
-    """Collect all QIDs/PIDs that will appear in output."""
     ids: List[str] = []
-
     for result in path_results:
-        ids.append(result.entity_1)
-        ids.append(result.entity_2)
-        ids.extend(result.path_tokens)
+        if is_wikidata_id(result.entity_1):
+            ids.append(result.entity_1)
+        if is_wikidata_id(result.entity_2):
+            ids.append(result.entity_2)
+        ids.extend(token for token in result.path_tokens if is_wikidata_id(token))
         ids.extend(result.property_ids)
         ids.extend(result.qualifier_ids)
-
-    return [item_id for item_id in unique_preserve_order(ids) if is_qid(item_id) or is_pid(item_id)]
+    return unique_preserve_order(ids)
 
 
 def format_path_tokens(
@@ -1034,25 +994,15 @@ def format_path_tokens(
     row_labels: Dict[str, str],
     label_store: LabelStore,
 ) -> str:
-    readable_tokens: List[str] = []
-
-    for token in path_tokens:
-        if is_qid(token) or is_pid(token):
-            readable_tokens.append(label_store.readable_id(token, row_labels))
-        else:
-            readable_tokens.append(token)
-
-    return "->".join(readable_tokens)
+    return "->".join(label_store.readable_id(token, row_labels) for token in path_tokens)
 
 
 def group_path_results_by_pair(
     path_results: List[PathResult],
-) -> Dict[Tuple[str, str], List[PathResult]]:
-    grouped: Dict[Tuple[str, str], List[PathResult]] = defaultdict(list)
-
+) -> Dict[Tuple[str, str, str, str], List[PathResult]]:
+    grouped: Dict[Tuple[str, str, str, str], List[PathResult]] = defaultdict(list)
     for result in path_results:
-        grouped[(result.entity_1, result.entity_2)].append(result)
-
+        grouped[(result.question, result.gold_answer, result.entity_1, result.entity_2)].append(result)
     return grouped
 
 
@@ -1061,30 +1011,21 @@ def summarize_grouped_paths(
     row_labels: Dict[str, str],
     label_store: LabelStore,
 ) -> Dict[str, str]:
-    """Create one output CSV row for one Entity_1/Entity_2 pair."""
+    """Create one output CSV row for one question/gold/entity pair."""
     if not grouped_paths:
         return {}
 
-    entity_1 = grouped_paths[0].entity_1
-    entity_2 = grouped_paths[0].entity_2
-
-    path_strings = [
-        format_path_tokens(result.path_tokens, row_labels, label_store)
-        for result in grouped_paths
-    ]
+    first = grouped_paths[0]
+    path_strings = [format_path_tokens(result.path_tokens, row_labels, label_store) for result in grouped_paths]
     path_strings = unique_preserve_order(path_strings)
 
     if len(path_strings) == 1:
         connection_path = path_strings[0]
     else:
-        connection_path = "\n".join(
-            f"Path{i + 1}: {path}"
-            for i, path in enumerate(path_strings)
-        )
+        connection_path = "\n".join(f"Path{i + 1}: {path}" for i, path in enumerate(path_strings))
 
     property_ids: List[str] = []
     qualifier_ids: List[str] = []
-
     for result in grouped_paths:
         property_ids.extend(result.property_ids)
         qualifier_ids.extend(result.qualifier_ids)
@@ -1092,22 +1033,70 @@ def summarize_grouped_paths(
     property_ids = unique_preserve_order(property_ids)
     qualifier_ids = unique_preserve_order(qualifier_ids)
 
-    property_list = ";".join(
-        label_store.readable_id(pid, row_labels) for pid in property_ids
-    )
-    qualifier_list = ";".join(
-        label_store.readable_id(pid, row_labels) for pid in qualifier_ids
-    )
+    property_list = ";".join(label_store.readable_id(pid, row_labels) for pid in property_ids)
+    qualifier_list = ";".join(label_store.readable_id(pid, row_labels) for pid in qualifier_ids)
 
     return {
-        "Entity_1": label_store.readable_id(entity_1, row_labels),
-        "Entity_2": label_store.readable_id(entity_2, row_labels),
+        "question": first.question,
+        "gold_answer": first.gold_answer,
+        "Entity_1": label_store.readable_id(first.entity_1, row_labels),
+        "Entity_2": label_store.readable_id(first.entity_2, row_labels),
         "Connection_Path": connection_path,
         "Property_Number": str(len(property_ids)) if property_ids else "",
         "Property_list": property_list,
         "Qualifier_Number": str(len(qualifier_ids)) if qualifier_ids else "",
         "Qualifier_list": qualifier_list,
     }
+
+
+# ============================================================
+# DIAGNOSTICS
+# ============================================================
+
+def diagnose_unresolved_source_row(
+    source_row: Dict[str, str],
+    parsed_result_rows: List[Dict[str, Dict[str, str]]],
+) -> str:
+    """Return a compact reason when a source row produced no paths."""
+    sparql = source_row.get("sparql", "")
+
+    if not str(source_row.get("result", "")).strip():
+        return "empty result cell"
+    if not parsed_result_rows:
+        return "could not parse result as a Markdown table"
+
+    symbolic_edges = parse_sparql_edges(sparql)
+    if not symbolic_edges:
+        return (
+            "no supported SPARQL edges parsed; query may use unsupported syntax "
+            "such as property paths, UNION-only patterns, VALUES, BIND, SERVICE-only triples, or aggregation"
+        )
+
+    any_instantiated = False
+    any_candidates = False
+    any_literal_binding = False
+
+    for parsed_result_row in parsed_result_rows:
+        var_bindings, _ = build_variable_bindings_and_row_labels(parsed_result_row)
+        if any(binding.kind == "literal" for binding in var_bindings.values()):
+            any_literal_binding = True
+        instantiated = instantiate_edges(symbolic_edges, var_bindings)
+        candidates = choose_candidate_pairs(sparql, var_bindings)
+        if instantiated:
+            any_instantiated = True
+        if candidates:
+            any_candidates = True
+        for e1, e2 in candidates:
+            if find_paths_between_nodes(instantiated, e1, e2):
+                return "unexpected: diagnostic found a path"
+
+    if not any_instantiated:
+        if any_literal_binding:
+            return "variables include literal values, but parsed SPARQL edges could not be filled into a supported path"
+        return "SPARQL edges were parsed, but variables could not be filled from the result table"
+    if not any_candidates:
+        return "no candidate Entity_1/Entity_2 pair could be inferred from fixed wd:Q anchors and selected result variables"
+    return "edges and candidate pairs exist, but no directed path connects them"
 
 
 # ============================================================
@@ -1118,7 +1107,6 @@ def read_source_rows(input_csv_path: str) -> List[Dict[str, str]]:
     """Read source CSV rows into memory."""
     with open(input_csv_path, "r", encoding="utf-8-sig", newline="") as infile:
         reader = csv.DictReader(infile)
-
         if reader.fieldnames is None:
             raise ValueError("Input CSV has no header row.")
 
@@ -1127,67 +1115,9 @@ def read_source_rows(input_csv_path: str) -> List[Dict[str, str]]:
         if missing:
             raise ValueError(f"Missing required columns: {', '.join(sorted(missing))}")
 
+        # question/gold_answer are optional for flexibility, but the output will
+        # include blank cells if they are missing.
         return list(reader)
-
-
-
-def diagnose_unresolved_source_row(
-    source_row: Dict[str, str],
-    parsed_result_rows: List[Dict[str, Dict[str, str]]],
-) -> str:
-    """
-    Return a compact reason when a source row produced no derived paths.
-
-    This report is important because missing output rows are usually caused by
-    path-derivation limits, not by label API failures. Label API failures only
-    affect readable names; they should not prevent rows from being written.
-    """
-    sparql = source_row.get("sparql", "")
-
-    if not str(source_row.get("result", "")).strip():
-        return "empty result cell"
-
-    if not parsed_result_rows:
-        return "could not parse result as a Markdown table"
-
-    symbolic_edges = parse_sparql_edges(sparql)
-    if not symbolic_edges:
-        return (
-            "no supported SPARQL edges parsed; the query may use unsupported syntax "
-            "such as property paths, OPTIONAL/UNION-only patterns, VALUES, BIND, "
-            "SERVICE-only triples, literals, or aggregations"
-        )
-
-    any_instantiated_edges = False
-    any_candidate_pairs = False
-
-    for parsed_result_row in parsed_result_rows:
-        var_bindings, _row_labels = build_variable_bindings_and_row_labels(parsed_result_row)
-        instantiated_edges = instantiate_edges(symbolic_edges, var_bindings)
-        candidate_pairs = choose_candidate_entity_pairs(sparql, var_bindings)
-
-        if instantiated_edges:
-            any_instantiated_edges = True
-        if candidate_pairs:
-            any_candidate_pairs = True
-
-        for entity_1, entity_2 in candidate_pairs:
-            if find_paths_between_entities(instantiated_edges, entity_1, entity_2):
-                return "unexpected: diagnostic found a path"
-
-    if not any_instantiated_edges:
-        return (
-            "SPARQL edges were parsed, but their variables could not be filled "
-            "with QIDs from the result table"
-        )
-
-    if not any_candidate_pairs:
-        return (
-            "no candidate Entity_1/Entity_2 pair could be inferred from fixed wd:Q "
-            "anchors and selected result variables"
-        )
-
-    return "edges and candidate pairs exist, but no directed path connects them"
 
 
 def derive_all_path_groups(
@@ -1195,21 +1125,14 @@ def derive_all_path_groups(
     label_store: LabelStore,
 ) -> Tuple[List[Tuple[List[PathResult], Dict[str, str]]], List[Dict[str, str]]]:
     """
-    First pass over the data.
-
-    It derives paths and collects labels that are already present in the result
-    tables. It does not format the final output yet, because we want to batch
-    fetch all missing labels first.
+    First pass over the input.
 
     Returns:
         all_groups:
-            Groups that will become output rows.
+            grouped PathResult objects plus row-specific labels.
 
         skipped_rows:
-            Diagnostic rows for source/result rows where no path could be
-            derived. These rows are written to SKIPPED_REPORT_CSV_PATH. This is
-            how you can tell whether missing rows were caused by unsupported
-            SPARQL shape, empty/non-table result, or unbound variables.
+            diagnostic rows for source rows that produced no output path.
     """
     all_groups: List[Tuple[List[PathResult], Dict[str, str]]] = []
     skipped_rows: List[Dict[str, str]] = []
@@ -1219,18 +1142,11 @@ def derive_all_path_groups(
         start=1,
     ):
         result_text = source_row.get("result", "")
-        sparql = source_row.get("sparql", "")
-
         parsed_result_rows = parse_markdown_result_table(result_text)
         source_row_produced_any_path = False
 
         for result_index, parsed_result_row in enumerate(parsed_result_rows, start=1):
-            path_results, row_labels = derive_paths_for_result_row(
-                sparql=sparql,
-                parsed_result_row=parsed_result_row,
-            )
-
-            # Save row labels globally so future rows can reuse them.
+            path_results, row_labels = derive_paths_for_result_row(source_row, parsed_result_row)
             label_store.add_labels(row_labels)
 
             if not path_results:
@@ -1246,15 +1162,15 @@ def derive_all_path_groups(
             skipped_rows.append(
                 {
                     "source_row_number": str(source_index),
+                    "question": source_row.get("question", ""),
+                    "gold_answer": source_row.get("gold_answer", ""),
                     "reason": reason,
-                    "sparql_preview": str(sparql).replace("\n", " ")[:500],
-                    "result_preview": str(result_text).replace("\n", " ")[:500],
+                    "sparql_preview": str(source_row.get("sparql", "")).replace("\n", " ")[:700],
+                    "result_preview": str(result_text).replace("\n", " ")[:700],
                 }
             )
 
             if WRITE_UNRESOLVED_ROWS:
-                # Optional blank output row. This preserves a closer row count,
-                # but the skipped report is usually more useful for debugging.
                 all_groups.append(([], {}))
 
     return all_groups, skipped_rows
@@ -1268,11 +1184,7 @@ def format_output_rows(
     output_rows: List[Dict[str, str]] = []
 
     for grouped_paths, row_labels in tqdm(all_groups, desc="Formatting output", unit="row"):
-        output_row = summarize_grouped_paths(
-            grouped_paths=grouped_paths,
-            row_labels=row_labels,
-            label_store=label_store,
-        )
+        output_row = summarize_grouped_paths(grouped_paths, row_labels, label_store)
         if output_row:
             output_rows.append(output_row)
 
@@ -1281,6 +1193,8 @@ def format_output_rows(
 
 def write_output_csv(output_csv_path: str, rows: List[Dict[str, str]]) -> None:
     fieldnames = [
+        "question",
+        "gold_answer",
         "Entity_1",
         "Entity_2",
         "Connection_Path",
@@ -1296,11 +1210,11 @@ def write_output_csv(output_csv_path: str, rows: List[Dict[str, str]]) -> None:
         writer.writerows(rows)
 
 
-
 def write_skipped_report_csv(output_csv_path: str, rows: List[Dict[str, str]]) -> None:
-    """Write diagnostics for source rows that produced no derived output path."""
     fieldnames = [
         "source_row_number",
+        "question",
+        "gold_answer",
         "reason",
         "sparql_preview",
         "result_preview",
@@ -1319,7 +1233,6 @@ def write_skipped_report_csv(output_csv_path: str, rows: List[Dict[str, str]]) -
 def main() -> int:
     try:
         label_store = LabelStore(language=LABEL_LANGUAGE)
-
         source_rows = read_source_rows(INPUT_CSV_PATH)
 
         all_groups, skipped_rows = derive_all_path_groups(
@@ -1327,28 +1240,18 @@ def main() -> int:
             label_store=label_store,
         )
 
-        # Collect every ID that may appear in the output and fetch missing labels
-        # in batches. Labels already found in the result table are not fetched.
+        # Collect all QIDs/PIDs that will appear in output, then fetch missing
+        # labels in batches. Literal endpoints such as xsd:decimal are not sent
+        # to Wikidata.
         ids_needed: List[str] = []
         for grouped_paths, _row_labels in all_groups:
             ids_needed.extend(collect_ids_needed_for_labels(grouped_paths))
-
         label_store.fetch_missing_labels(ids_needed)
 
-        output_rows = format_output_rows(
-            all_groups=all_groups,
-            label_store=label_store,
-        )
+        output_rows = format_output_rows(all_groups, label_store)
 
-        write_output_csv(
-            OUTPUT_CSV_PATH,
-            output_rows,
-        )
-
-        write_skipped_report_csv(
-            SKIPPED_REPORT_CSV_PATH,
-            skipped_rows,
-        )
+        write_output_csv(OUTPUT_CSV_PATH, output_rows)
+        write_skipped_report_csv(SKIPPED_REPORT_CSV_PATH, skipped_rows)
 
     except Exception as exc:
         print(f"Error: {exc}", file=sys.stderr)
