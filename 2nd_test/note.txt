@@ -1,36 +1,39 @@
-Type1: empty_sparql_result     
+1. empty_sparql_result -> missing edge(triplet):     
 
-Correct complete/incomplete entities, wrong properties used.
+    Correct complete/incomplete entities, wrong properties used.
 
-- formatted: 
+    - formatted: 
+        - Using entities:...
+        - Using properties:...
+
+    Strong singal for missing edge(triplet).
+    - formatted: 
+    ...is not available in Wikidata.
     - Using entities:...
     - Using properties:...
 
-Strong singal for missing edge(triplet).
-- formatted: 
-...is not available in Wikidata.
-- Using entities:...
-- Using properties:...
+    Strong signal for missing edge. Wrong entity used. NER from scratch.
+    - formatted: 
+    Using other (non-indexed) items:
 
-Strong signal for missing edge. Wrong entity used. NER from scratch.
-- formatted: 
-Using other (non-indexed) items:
-
-Type2: no_sparql_generated  
+2. no_sparql_generated  -> ambiguous question
 
 
-Type3：sparql_execution_failed (execution)：
+3. sparql_execution_failed (execution)-> time-out / missing entity(very rare)
 
-Try re-run first.
+    Try re-run first,mostly due to time out.
 
-Missing entity:
-- formatted: 
-does not appear in any known entities or links in Wikidata related to...
+    Missing entity:
+    - formatted: 
+    does not appear in any known entities or links in Wikidata related to...
+    is not available in the available data...
 
 
+4. sparql_execution_failed (preprocessing) -> poor SPARQL quality
 
-Type4: sparql_execution_failed (preprocessing):
-
-Nothing to use. Reason stops at surface level.
-- formatted:
+    A clear indication of SPARQL poor quality. Just re-run. 
+    - formatted:
     Error executing SPARQL query over wikidata...(the input most likely does not follow the grammar).
+
+
+
