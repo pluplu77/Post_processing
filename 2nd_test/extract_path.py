@@ -151,9 +151,9 @@ except Exception:  # pragma: no cover - tqdm is optional
 # CONFIG
 # ============================================================
 
-INPUT_CSV_PATH = "all_valid_cases_with_taxonomy.csv"
-OUTPUT_CSV_PATH = "derived_connection_output_all_valid_cases_with_taxonomy.csv.csv"
-SKIPPED_REPORT_CSV_PATH = "derived_connection_skipped_report.csv"
+INPUT_CSV_PATH = "complexqa_all_valid_cases_with_taxonomy.csv"
+OUTPUT_CSV_PATH = "complexqa_derived__all_valid_cases_with_taxonomy.csv.csv"
+SKIPPED_REPORT_CSV_PATH = "complexqa_connection_skipped_report.csv"
 
 LABEL_LANGUAGE = "en"
 
