@@ -277,9 +277,33 @@ def is_wikidata_id(value: str) -> bool:
 
 
 def is_literal_endpoint(value: str) -> bool:
-    """Return True for endpoints such as xsd:decimal, xsd:dateTime, literal."""
-    value = str(value or "")
-    return bool(re.fullmatch(r"[A-Za-z_][A-Za-z0-9_.-]*:[A-Za-z_][A-Za-z0-9_.-]*", value)) or value == "literal"
+    """
+    Return True for literal endpoints.
+
+    Supports both compact datatype endpoints:
+        xsd:decimal
+
+    and full literal endpoints:
+        252.0 (xsd:decimal)
+        2015-01-01 (xsd:dateTime)
+    """
+    value = str(value or "").strip()
+
+    if value == "literal":
+        return True
+
+    # Compact datatype only, e.g. xsd:decimal
+    if re.fullmatch(r"[A-Za-z_][A-Za-z0-9_.-]*:[A-Za-z_][A-Za-z0-9_.-]*", value):
+        return True
+
+    # Full literal with datatype, e.g. 252.0 (xsd:decimal)
+    if re.fullmatch(
+        r".+\s+\([A-Za-z_][A-Za-z0-9_.-]*:[A-Za-z_][A-Za-z0-9_.-]*\)",
+        value,
+    ):
+        return True
+
+    return False
 
 
 def normalize_sparql_token(token: str) -> str:
@@ -585,15 +609,26 @@ def build_variable_bindings_and_row_labels(
                 row_labels[item_id] = label
             continue
 
+    
         if datatype:
-            # For output endpoints, use datatype rather than the literal value.
-            # Example: 252.0 (xsd:decimal) -> xsd:decimal
+            # For output endpoints, keep the complete literal value.
+            # Example:
+            #   252.0 (xsd:decimal) -> 252.0 (xsd:decimal)
+            literal_value = cell.get("literal_value", "") or label
+
+            if datatype == "literal":
+                literal_endpoint = literal_value or "literal"
+            else:
+                literal_endpoint = f"{literal_value} ({datatype})" if literal_value else datatype
+
             var_bindings[column] = Binding(
                 kind="literal",
-                value=datatype,
-                label=cell.get("literal_value", "") or label,
+                value=literal_endpoint,
+                label=literal_value,
                 datatype=datatype,
             )
+
+        
 
     # Second pass: attach label columns to their base entity variables.
     for column, cell in parsed_result_row.items():
