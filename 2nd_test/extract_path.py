@@ -152,7 +152,7 @@ except Exception:  # pragma: no cover - tqdm is optional
 # ============================================================
 
 INPUT_CSV_PATH = "complexqa_all_valid_cases_with_taxonomy.csv"
-OUTPUT_CSV_PATH = "complexqa_derived__all_valid_cases_with_taxonomy.csv.csv"
+OUTPUT_CSV_PATH = "complexqa_derived__all_valid_cases_with_taxonomy.csv"
 SKIPPED_REPORT_CSV_PATH = "complexqa_connection_skipped_report.csv"
 
 LABEL_LANGUAGE = "en"
