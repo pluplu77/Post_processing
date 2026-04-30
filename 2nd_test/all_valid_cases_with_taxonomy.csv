@@ -1,0 +1,1438 @@
+question,gold_answer,result_cleaned,gold_size,pred_size,recall,precision,similarity_score,taxonomy_label,result,sparql,file_path
+What is the name of the film that was the sequel to The Terminator movie?,Terminator 2: Judgment Day,Terminator 2: Judgment Day,1,1,1,1,1,same,"| followedBy                              |
+| --------------------------------------- |
+| Terminator 2: Judgment Day (wd:Q170564) |","SELECT ?followedBy WHERE {
+  wd:Q162255 wdt:P156 ?followedBy
+}",CompMix_table_simple_qa_00005.json
+who is the president of usa right now,Donald Trump,Donald Trump,1,1,1,1,1,same,"| president                |
+| ------------------------ |
+| Donald Trump (wd:Q22686) |","SELECT ?president WHERE {
+  wd:Q11696 wdt:P1308 ?president .
+}",NQ_table_test_simple_00443.json
+who plays yoda in revenge of the sith,Frank Oz,Frank Oz,1,1,1,1,1,same,"| actor                 |
+| --------------------- |
+| Frank Oz (wd:Q311319) |","SELECT ?actor WHERE {
+  wd:Q42051 wdt:P674 ?character .
+  ?character wdt:P175 ?actor .
+  FILTER(?character = wd:Q51730)
+}",NQ_table_test_simple_00451.json
+when was the book pride and prejudice written,28 January 1813,1813-01-28T00:00:00Z,1,1,1,1,1,same,"| publicationDate                     |
+| ----------------------------------- |
+| 1813-01-28T00:00:00Z (xsd:dateTime) |","SELECT ?publicationDate WHERE {
+  wd:Q170583 wdt:P577 ?publicationDate
+}",NQ_table_test_simple_00412.json
+What was the name of author who wrote Things Fall Apart?,Chinua Achebe,Chinua Achebe,1,1,1,1,1,same,"| author                     |
+| -------------------------- |
+| Chinua Achebe (wd:Q155845) |","SELECT ?author WHERE {
+  wd:Q622400 wdt:P50 ?author
+}",CompMix_table_simple_qa_00052.json
+What was the name of English Singer who performed in Toosie Slide?,Drake,Drake,1,1,1,1,1,same,"| performer         |
+| ----------------- |
+| Drake (wd:Q33240) |","SELECT ?performer WHERE {
+  wd:Q89324673 wdt:P175 ?performer
+}",CompMix_table_simple_qa_00066.json
+which country of origin of the Nineteen Eighty-Four  Book?,United Kingdom,United Kingdom,1,1,1,1,1,same,"| country                  |
+| ------------------------ |
+| United Kingdom (wd:Q145) |","SELECT ?country WHERE {
+  wd:Q208460 wdt:P495 ?country
+}",CompMix_table_simple_qa_00061.json
+who directs the tv series Squid Game?,Hwang Dong-hyeok,Hwang Dong-hyeok,1,1,1,1,1,same,"| director                       |
+| ------------------------------ |
+| Hwang Dong-hyeok (wd:Q3143548) |","SELECT ?director WHERE {
+  wd:Q106582931 wdt:P57 ?director
+}",CompMix_table_simple_qa_00067.json
+who was the author of the art of war,Sun Tzu,Sun Tzu,1,1,1,1,1,same,"| author              |
+| ------------------- |
+| Sun Tzu (wd:Q37151) |","SELECT ?author WHERE {
+  wd:Q8251 wdt:P50 ?author
+}",NQ_table_test_simple_00480.json
+"Who won the Best Film Editing award in Academy Awards for the movie ""The Matrix""?",Zach Staenberg,Zach Staenberg,1,1,1,1,1,same,"| editor                      |
+| --------------------------- |
+| Zach Staenberg (wd:Q139384) |","SELECT ?editor WHERE {
+  wd:Q83495 wdt:P1040 ?editor
+}",CompMix_table_simple_qa_00033.json
+Which national team does Robert Lewandowski captain?,Poland,Poland,1,1,1,1,1,same,"| nationalTeam    |
+| --------------- |
+| Poland (wd:Q36) |","SELECT ?nationalTeam WHERE {
+  wd:Q151269 wdt:P1532 ?nationalTeam
+}",CompMix_table_simple_qa_00032.json
+who won the gold for the men's figure skating,Yuzuru Hanyu,Yuzuru Hanyū,1,1,1,1,1,same,"| winner                    |
+| ------------------------- |
+| Yuzuru Hanyū (wd:Q597023) |","SELECT ?winner WHERE {
+  wd:Q47295100 wdt:P1346 ?winner
+}",NQ_table_test_simple_00418.json
+Author of the book the Jane Eyre?,Charlotte Brontë,Charlotte Brontë,1,1,1,1,1,same,"| author                        |
+| ----------------------------- |
+| Charlotte Brontë (wd:Q127332) |","SELECT ?author WHERE {
+  wd:Q182961 wdt:P50 ?author
+}",CompMix_table_simple_qa_00099.json
+Who is the director of the movie lord of the rings?,Peter Jackson,Peter Jackson,1,1,1,1,1,same,"| director                 |
+| ------------------------ |
+| Peter Jackson (wd:Q4465) |","SELECT ?director WHERE {
+  wd:Q190214 wdt:P57 ?director
+}",CompMix_table_simple_qa_00094.json
+What country's national team does Alessandro Del Piero play for?,Italy,Italy,1,1,1,1,1,same,"| country        |
+| -------------- |
+| Italy (wd:Q38) |","SELECT ?country WHERE {
+  wd:Q624 wdt:P1532 ?country
+}",CompMix_table_simple_qa_00086.json
+who won the mens single ice skating 2018,Yuzuru Hanyu,Yuzuru Hanyū,1,1,1,1,1,same,"| winner                    |
+| ------------------------- |
+| Yuzuru Hanyū (wd:Q597023) |","SELECT ?winner WHERE {
+  wd:Q47295100 wdt:P1346 ?winner
+}",NQ_table_test_simple_00502.json
+when does season 2 of just add magic come out,"October 14, 2016",|2016-10-14T00:00:00Z,1,1,1,1,1,same,"| season | startTime                           |
+| ------ | ----------------------------------- |
+|        | 2016-10-14T00:00:00Z (xsd:dateTime) |","SELECT ?season ?startTime WHERE {
+  wd:Q60978075 wdt:P580 ?startTime
+}",NQ_table_test_simple_00431.json
+when did amnesia the dark descent come out,8 September 2010,2010-09-08T00:00:00Z,1,1,1,1,1,same,"| releaseDate                         |
+| ----------------------------------- |
+| 2010-09-08T00:00:00Z (xsd:dateTime) |","SELECT ?releaseDate WHERE {
+  wd:Q22986 wdt:P577 ?releaseDate .
+}",NQ_table_test_simple_00429.json
+who won the 2017 women's wimbledon final,Garbiñe Muguruza,Garbiñe Muguruza,1,1,1,1,1,same,"| winner                       |
+| ---------------------------- |
+| Garbiñe Muguruza (wd:Q34276) |","SELECT ?winner WHERE {
+  wd:Q25344122 wdt:P1346 ?winner
+}",NQ_table_test_simple_00421.json
+when did britain set up east indian trading company,31 December 1600,1600-12-31T00:00:00Z,1,1,1,1,1,same,"| inception                           |
+| ----------------------------------- |
+| 1600-12-31T00:00:00Z (xsd:dateTime) |","SELECT ?inception WHERE {
+  wd:Q83164 wdt:P571 ?inception
+}",NQ_table_test_simple_00562.json
+when did i ain't mad at cha come out,"September 15, 1996",1996-09-15T00:00:00Z,1,1,1,1,1,same,"| releaseDate                         |
+| ----------------------------------- |
+| 1996-09-15T00:00:00Z (xsd:dateTime) |","SELECT ?releaseDate WHERE {
+  wd:Q2559582 wdt:P577 ?releaseDate
+}",NQ_table_test_simple_00924.json
+Who is the director tv series Alice in Borderland?,Shinsuke Sato,Shinsuke Sato,1,1,1,1,1,same,"| director                    |
+| --------------------------- |
+| Shinsuke Sato (wd:Q7497770) |","SELECT ?director WHERE {
+  wd:Q103967305 wdt:P57 ?director
+}",CompMix_table_simple_qa_00120.json
+What nation did Fabio Cannavaro represent in soccer?,Italy,Italy,1,1,1,1,1,same,"| nation         |
+| -------------- |
+| Italy (wd:Q38) |","SELECT ?nation WHERE {
+  wd:Q102027 wdt:P1532 ?nation
+}",CompMix_table_simple_qa_00115.json
+when did avatar the last airbender first air,"February 21, 2005",2005-02-21T00:00:00Z,1,1,1,1,1,same,"| date                                |
+| ----------------------------------- |
+| 2005-02-21T00:00:00Z (xsd:dateTime) |","SELECT ?date WHERE {
+  wd:Q11572 wdt:P580 ?date
+}",NQ_table_test_simple_00913.json
+who wrote the song city of new orleans,Steve Goodman,Steve Goodman,1,1,1,1,1,same,"| composer                   |
+| -------------------------- |
+| Steve Goodman (wd:Q585159) |","SELECT ?composer WHERE {
+  wd:Q21643112 wdt:P86 ?composer
+}",NQ_table_test_simple_00347.json
+who appoints the chief election commissioner of india,President of India,President of India,1,1,1,1,1,same,"| appointor                       |
+| ------------------------------- |
+| President of India (wd:Q313383) |","SELECT ?appointor WHERE {
+  wd:Q3522413 wdt:P748 ?appointor
+}",NQ_table_test_simple_00338.json
+Who is the head coach of Orlando City SC?,Óscar Pareja,Óscar Pareja,1,1,1,1,1,same,"| coach                      |
+| -------------------------- |
+| Óscar Pareja (wd:Q4025482) |","SELECT ?coach WHERE {
+  wd:Q15214308 wdt:P286 ?coach
+}",CompMix_table_simple_qa_00100.json
+when did the phantom of the opera open,9 October 1986,1986-10-09T00:00:00Z,1,1,1,1,1,same,"| date                                |
+| ----------------------------------- |
+| 1986-10-09T00:00:00Z (xsd:dateTime) |","SELECT ?date WHERE {
+  wd:Q382353 wdt:P1191 ?date
+}",NQ_table_test_simple_00528.json
+when was the south asian association for regional co-operation (saarc) formed,8 December 1985,1985-12-08T00:00:00Z,1,1,1,1,1,same,"| inception                           |
+| ----------------------------------- |
+| 1985-12-08T00:00:00Z (xsd:dateTime) |","SELECT ?inception WHERE {
+  wd:Q145700 wdt:P571 ?inception
+}",NQ_table_test_simple_00517.json
+where does porter fly out of in toronto,Billy Bishop Toronto City Airport,Billy Bishop Toronto City Airport,1,1,1,1,1,same,"| airlineHub                                     |
+| ---------------------------------------------- |
+| Billy Bishop Toronto City Airport (wd:Q117708) |","SELECT ?airlineHub WHERE {
+  wd:Q1811473 wdt:P113 ?airlineHub
+}",NQ_table_test_simple_00403.json
+"Who won the Best Film Music award in the 26th British Academy Film Awards for the movie ""The Godfather""?",Nino Rota,Nino Rota,1,1,1,1,1,same,"| composer               |
+| ---------------------- |
+| Nino Rota (wd:Q214665) |","SELECT ?composer WHERE {
+  wd:Q47703 wdt:P86 ?composer
+}",CompMix_table_simple_qa_00107.json
+Who was the cinematographer on A Wrinkle in Time?,Tobias A. Schliessler,Tobias A. Schliessler,1,1,1,1,1,same,"| cinematographer                     |
+| ----------------------------------- |
+| Tobias A. Schliessler (wd:Q2437689) |","SELECT ?cinematographer WHERE {
+  wd:Q24301388 wdt:P344 ?cinematographer
+}",CompMix_table_simple_qa_00112.json
+who was the nfl first draft pick 2017,Myles Garrett,Myles Garrett,1,1,1,1,1,same,"| player                       |
+| ---------------------------- |
+| Myles Garrett (wd:Q18207047) |","SELECT ?player WHERE {
+  wd:Q25050788 wdt:P3342 ?player .
+}",NQ_table_test_simple_00557.json
+where is bigg boss tamil house is located,Chennai,Chennai,1,1,1,1,1,same,"| location           |
+| ------------------ |
+| Chennai (wd:Q1352) |","SELECT ?location WHERE {
+  wd:Q30644093 wdt:P1071 ?location
+}",NQ_table_test_simple_00287.json
+when was you'll never walk alone first released,1945,1945-01-01T00:00:00Z,1,1,1,1,1,same,"| publicationDate                     |
+| ----------------------------------- |
+| 1945-01-01T00:00:00Z (xsd:dateTime) |","SELECT ?publicationDate WHERE {
+  wd:Q728692 wdt:P577 ?publicationDate
+}",NQ_table_test_simple_00592.json
+Who directs the TV Series The Wheel of Time?,Uta Briesewitz,Uta Briesewitz,1,1,1,1,1,same,"| director                    |
+| --------------------------- |
+| Uta Briesewitz (wd:Q109355) |","SELECT ?director WHERE {
+  wd:Q60746841 wdt:P57 ?director .
+}",CompMix_table_simple_qa_00169.json
+Which national soccer team did Fabio Cannavaro play for?,Italy,Italy,1,1,1,1,1,same,"| nationalTeam   |
+| -------------- |
+| Italy (wd:Q38) |","SELECT ?nationalTeam WHERE {
+  wd:Q102027 wdt:P1532 ?nationalTeam
+}",CompMix_table_simple_qa_00170.json
+Jane Eyre novel was written by?,Charlotte Bronte,Charlotte Brontë,1,1,1,1,1,same,"| author                        |
+| ----------------------------- |
+| Charlotte Brontë (wd:Q127332) |","SELECT ?author WHERE {
+  wd:Q182961 wdt:P50 ?author
+}",CompMix_table_simple_qa_00174.json
+Robert Lewandowski is the captain of which national team?,Poland,Poland,1,1,1,1,1,same,"| country         |
+| --------------- |
+| Poland (wd:Q36) |","SELECT ?country WHERE {
+  wd:Q151269 wdt:P1532 ?country
+}",CompMix_table_simple_qa_00176.json
+What is the name of Percy Jackson's mother?,Sally Jackson,Sally Jackson,1,1,1,1,1,same,"| mother                       |
+| ---------------------------- |
+| Sally Jackson (wd:Q10367000) |","SELECT ?mother WHERE {
+  wd:Q3899725 wdt:P25 ?mother
+}",CompMix_table_simple_qa_00178.json
+Who original broadcaster Elite Tv  Series?,Netflix,Netflix,1,1,1,1,1,same,"| broadcaster          |
+| -------------------- |
+| Netflix (wd:Q907311) |","SELECT ?broadcaster WHERE {
+  wd:Q53000974 wdt:P449 ?broadcaster
+}",CompMix_table_simple_qa_00179.json
+what class of ship is the carnival glory,Conquest-class cruise ship,Conquest-class cruise ship,1,1,1,1,1,same,"| class                                    |
+| ---------------------------------------- |
+| Conquest-class cruise ship (wd:Q1126574) |","SELECT ?class WHERE {
+  wd:Q933950 wdt:P289 ?class
+}",NQ_table_test_simple_00881.json
+Which country does the soccer player Alessandro Del Piero represent?,Italy,Italy,1,1,1,1,1,same,"| country        |
+| -------------- |
+| Italy (wd:Q38) |","SELECT ?country WHERE {
+  wd:Q624 wdt:P1532 ?country
+}",CompMix_table_simple_qa_00142.json
+Who writes the book the Jane Eyre?,Charlotte Brontë,Charlotte Brontë,1,1,1,1,1,same,"| author                        |
+| ----------------------------- |
+| Charlotte Brontë (wd:Q127332) |","SELECT ?author WHERE {
+  wd:Q182961 wdt:P50 ?author
+}",CompMix_table_simple_qa_00136.json
+What is the name of the father character in the TV series Family Guy?,Peter Griffin,Peter Griffin,1,1,1,1,1,same,"| father                    |
+| ------------------------- |
+| Peter Griffin (wd:Q28465) |","SELECT ?father WHERE {
+  wd:Q5930 wdt:P674 ?father .
+  ?father rdfs:label ""Peter Griffin"" @en
+}",CompMix_table_simple_qa_00155.json
+Which country did Ronaldinho play for?,Brazil,Brazil,1,1,1,1,1,same,"| country          |
+| ---------------- |
+| Brazil (wd:Q155) |","SELECT ?country WHERE {
+  wd:Q39444 wdt:P1532 ?country
+}",CompMix_table_simple_qa_00148.json
+What is the birth place of Justin Bieber?,London,London,1,1,1,1,1,same,"| birthPlace         |
+| ------------------ |
+| London (wd:Q92561) |","SELECT ?birthPlace WHERE {
+  wd:Q34086 wdt:P19 ?birthPlace
+}",CompMix_table_simple_qa_00132.json
+who won the fifth season of america's got talent,Michael Grimm,Michael Grimm,1,1,1,1,1,same,"| winner                      |
+| --------------------------- |
+| Michael Grimm (wd:Q6830810) |","SELECT ?winner WHERE {
+  wd:Q4101646 wdt:P1346 ?winner
+}",NQ_table_test_simple_00329.json
+when did the song holiday road come out,"June 24, 1983",1983-06-24T00:00:00Z,1,1,1,1,1,same,"| releaseDate                         |
+| ----------------------------------- |
+| 1983-06-24T00:00:00Z (xsd:dateTime) |","SELECT ?releaseDate WHERE {
+  wd:Q5880473 wdt:P577 ?releaseDate
+}",NQ_table_test_simple_00330.json
+who won women's singles us open 2017,Sloane Stephens,Sloane Stephens,1,1,1,1,1,same,"| winner                      |
+| --------------------------- |
+| Sloane Stephens (wd:Q54670) |","SELECT ?winner WHERE {
+  wd:Q28836050 wdt:P1346 ?winner .
+}",NQ_table_test_simple_00271.json
+who is doing 2018 super bowl half time show,Justin Timberlake,Justin Timberlake,1,1,1,1,1,same,"| performer                     |
+| ----------------------------- |
+| Justin Timberlake (wd:Q43432) |","SELECT ?performer WHERE {
+  wd:Q42317850 wdt:P175 ?performer
+}",NQ_table_test_simple_00580.json
+when did slave to the rhythm come out,"May 8, 2014",2014-05-08T00:00:00Z,1,1,1,1,1,same,"| releaseDate                         |
+| ----------------------------------- |
+| 2014-05-08T00:00:00Z (xsd:dateTime) |","SELECT ?releaseDate WHERE {
+  wd:Q16919265 wdt:P577 ?releaseDate
+}
+LIMIT 1",NQ_table_test_simple_00959.json
+What is the name of the director of Passengers?,Morten Tyldum,Morten Tyldum,1,1,1,1,1,same,"| director                    |
+| --------------------------- |
+| Morten Tyldum (wd:Q3425142) |","SELECT ?director WHERE {
+  wd:Q20962283 wdt:P57 ?director
+}",CompMix_table_simple_qa_00046.json
+Peaky Blinders web series is from?,United Kingdom,United Kingdom,1,1,1,1,1,same,"| country                  |
+| ------------------------ |
+| United Kingdom (wd:Q145) |","SELECT ?country WHERE {
+  wd:Q14944179 wdt:P495 ?country
+}",CompMix_table_simple_qa_00044.json
+who was the vocal artist of Toosie slide song?,Drake,Drake,1,1,1,1,1,same,"| performer         |
+| ----------------- |
+| Drake (wd:Q33240) |","SELECT ?performer WHERE {
+  wd:Q89324673 wdt:P175 ?performer
+}",CompMix_table_simple_qa_00014.json
+who does the voice of alistair in dragon age,Steve Valentine,Steve Valentine,1,1,1,1,1,same,"| actor                        |
+| ---------------------------- |
+| Steve Valentine (wd:Q129160) |","SELECT ?actor WHERE {
+  wd:Q4727253 wdt:P175 ?actor
+}",NQ_table_test_simple_00958.json
+Who is the voice actor of the character of Lois Griffin?,Alex Borstein,Alex Borstein,1,1,1,1,1,same,"| voiceActor                 |
+| -------------------------- |
+| Alex Borstein (wd:Q116219) |","SELECT ?voiceActor WHERE {
+  wd:Q853073 wdt:P725 ?voiceActor
+}",CompMix_table_simple_qa_00039.json
+What is the name of the original broadcaster in Game of Thrones?,HBO,|HBO,1,1,1,1,1,same,"| show | broadcaster     |
+| ---- | --------------- |
+|      | HBO (wd:Q23633) |","SELECT ?show ?broadcaster WHERE {
+  wd:Q23572 wdt:P449 ?broadcaster
+}",CompMix_table_simple_qa_00024.json
+Who is the production company behind the TV series Locke & Key?,IDW Publishing,IDW Publishing,1,1,1,1,1,same,"| productionCompany            |
+| ---------------------------- |
+| IDW Publishing (wd:Q3146596) |","SELECT ?productionCompany WHERE {
+  wd:Q56274745 wdt:P272 ?productionCompany
+}",CompMix_table_simple_qa_00013.json
+when was the movie the wizard of oz made,"August 25, 1939",1939-08-25T00:00:00Z,1,1,1,1,1,same,"| date                                |
+| ----------------------------------- |
+| 1939-08-25T00:00:00Z (xsd:dateTime) |","SELECT ?date WHERE {
+  wd:Q193695 wdt:P577 ?date .
+}
+LIMIT 1",NQ_table_test_simple_00009.json
+when was the us department of homeland security created,"November 25, 2002",2002-11-25T00:00:00Z,1,1,1,1,1,same,"| date                                |
+| ----------------------------------- |
+| 2002-11-25T00:00:00Z (xsd:dateTime) |","SELECT ?date WHERE {
+  wd:Q11231 wdt:P571 ?date
+}",NQ_table_test_simple_00803.json
+when did disney art of animation resort open,"May 31, 2012",2012-05-31T00:00:00Z,1,1,1,1,1,same,"| openingDate                         |
+| ----------------------------------- |
+| 2012-05-31T00:00:00Z (xsd:dateTime) |","SELECT ?openingDate WHERE {
+  wd:Q3030287 wdt:P1619 ?openingDate
+}",NQ_table_test_simple_00752.json
+who wrote hit me baby one more time,Max Martin,Max Martin,1,1,1,1,1,same,"| writer                  |
+| ----------------------- |
+| Max Martin (wd:Q318223) |","SELECT ?writer WHERE {
+  wd:Q155016 wdt:P676 ?writer
+}",NQ_table_test_simple_00780.json
+Director of the movie lord of the rings?,Peter Jackson,Peter Jackson,1,1,1,1,1,same,"| director                 |
+| ------------------------ |
+| Peter Jackson (wd:Q4465) |","SELECT ?director WHERE {
+  wd:Q190214 wdt:P57 ?director
+}",CompMix_table_simple_qa_00018.json
+what is main subject of the book Great Expectations?,orphan,orphan,1,1,1,1,1,same,"| mainSubject         |
+| ------------------- |
+| orphan (wd:Q193279) |","SELECT ?mainSubject WHERE {
+  wd:Q219552 wdt:P921 ?mainSubject
+}",CompMix_table_simple_qa_00301.json
+"What book is the basis for the series, Game of Thrones?",A Song of Ice and Fire,A Song of Ice and Fire,1,1,1,1,1,same,"| bookSeries                         |
+| ---------------------------------- |
+| A Song of Ice and Fire (wd:Q45875) |","SELECT ?bookSeries WHERE {
+  wd:Q23572 wdt:P144 ?bookSeries .
+}",CompMix_table_simple_qa_00299.json
+Who wrote A Tale of Two Cities?,Charles Dickens,Charles Dickens,1,1,1,1,1,same,"| author                     |
+| -------------------------- |
+| Charles Dickens (wd:Q5686) |","SELECT ?author WHERE {
+  wd:Q308918 wdt:P50 ?author
+}",CompMix_table_simple_qa_00295.json
+where is the world cup being held 2018,Russia,Russia,1,1,1,1,1,same,"| country          |
+| ---------------- |
+| Russia (wd:Q159) |","SELECT ?country WHERE {
+  wd:Q170645 wdt:P17 ?country
+}",NQ_table_test_simple_00725.json
+who sang the song you got a friend in me,Randy Newman | Lyle Lovett,"Randy Newman
+Lyle Lovett",2,2,1,1,1,same,"| performer                 |
+| ------------------------- |
+| Randy Newman (wd:Q318475) |
+| Lyle Lovett (wd:Q543637)  |","SELECT ?performer WHERE {
+  wd:Q3302365 wdt:P175 ?performer
+}",NQ_table_test_simple_00743.json
+when did clifford the big red dog first air on tv,"September 4, 2000",2000-09-04T00:00:00Z,1,1,1,1,1,same,"| airDate                             |
+| ----------------------------------- |
+| 2000-09-04T00:00:00Z (xsd:dateTime) |","SELECT ?airDate WHERE {
+  wd:Q2738999 wdt:P580 ?airDate
+}",NQ_table_test_simple_00591.json
+perth is the capital of which australian state,Western Australia,Western Australia,1,1,1,1,1,same,"| state                        |
+| ---------------------------- |
+| Western Australia (wd:Q3206) |","SELECT ?state WHERE {
+  wd:Q3183 wdt:P131 ?state
+}",NQ_table_test_simple_00896.json
+who has won the 2018 formula one australia grand prix tournament,Sebastian Vettel,Sebastian Vettel,1,1,1,1,1,same,"| winner                       |
+| ---------------------------- |
+| Sebastian Vettel (wd:Q42311) |","SELECT ?winner WHERE {
+  wd:Q45047629 wdt:P1346 ?winner
+}",NQ_table_test_simple_00239.json
+capital of georgia the former soviet republic 7 letters,Tbilisi,Tbilisi,1,1,1,1,1,same,"| capital           |
+| ----------------- |
+| Tbilisi (wd:Q994) |","SELECT ?capital WHERE {
+  wd:Q230 wdt:P36 ?capital
+}",NQ_table_test_simple_00628.json
+who sing say you won't let go,James Arthur,James Arthur,1,1,1,1,1,same,"| performer                 |
+| ------------------------- |
+| James Arthur (wd:Q717626) |","SELECT ?performer WHERE {
+  wd:Q26963266 wdt:P175 ?performer
+}",NQ_table_test_simple_00256.json
+when was the miraculous journey of edward tulane published,"March 30, 2006",2006-03-30T00:00:00Z,1,1,1,1,1,same,"| publicationDate                     |
+| ----------------------------------- |
+| 2006-03-30T00:00:00Z (xsd:dateTime) |","SELECT ?publicationDate WHERE {
+  wd:Q7751654 wdt:P577 ?publicationDate
+}",NQ_table_test_simple_00264.json
+Batman v Superman: Dawn of Justice Movie was directed by which film director?,Zack Snyder,Zack Snyder,1,1,1,1,1,same,"| director                 |
+| ------------------------ |
+| Zack Snyder (wd:Q139890) |","SELECT ?director WHERE {
+  wd:Q14772351 wdt:P57 ?director
+}",CompMix_table_simple_qa_00159.json
+Initial book of the novel series Little House on the Prairie?,Little House in the Big Woods,"Little House in the Big Woods
+Little House in the Big Woods
+Little House in the Big Woods
+Little House in the Big Woods",1,4,1,1,1,same,"| book                                          |
+| --------------------------------------------- |
+| Little House in the Big Woods (wd:Q131432705) |
+| Little House in the Big Woods (wd:Q131432745) |
+| Little House in the Big Woods (wd:Q7173181)   |
+| Little House in the Big Woods (wd:Q7173181)   |","SELECT ?book WHERE {
+  ?book wdt:P50 wd:Q237514 .
+  ?book rdfs:label ?label .
+  FILTER(CONTAINS(STR(?label) , 'Little House in the Big Woods'))
+}",CompMix_table_simple_qa_00162.json
+who wrote the phantom of the opera music,Andrew Lloyd Webber,Andrew Lloyd Webber,1,1,1,1,1,same,"| composer                         |
+| -------------------------------- |
+| Andrew Lloyd Webber (wd:Q180975) |","SELECT ?composer WHERE {
+  wd:Q382353 wdt:P86 ?composer
+}",NQ_table_test_simple_00614.json
+Which actor plays Robby Keene in Cobra Kai?,Tanner Buchanan,Tanner Buchanan,1,1,1,1,1,same,"| actor                          |
+| ------------------------------ |
+| Tanner Buchanan (wd:Q16745199) |","SELECT ?actor WHERE {
+  wd:Q65239075 wdt:P175 ?actor
+}",CompMix_table_simple_qa_00206.json
+What is the name of Paul's father in the novel Dune?,Leto I Atreides,Leto I Atreides,1,1,1,1,1,same,"| father                        |
+| ----------------------------- |
+| Leto I Atreides (wd:Q1078956) |","SELECT ?father WHERE {
+  wd:Q939956 wdt:P22 ?father
+}",CompMix_table_simple_qa_00201.json
+Who is the original broadcaster of the tv series ER?,NBC,NBC,1,1,1,1,1,same,"| broadcaster     |
+| --------------- |
+| NBC (wd:Q13974) |","SELECT ?broadcaster WHERE {
+  wd:Q207375 wdt:P449 ?broadcaster
+}",CompMix_table_simple_qa_00198.json
+Which country does Johan Cruyff play football for?,Netherlands,Netherlands,1,1,1,1,1,same,"| country              |
+| -------------------- |
+| Netherlands (wd:Q55) |","SELECT ?country WHERE {
+  wd:Q17163 wdt:P1532 ?country .
+}",CompMix_table_simple_qa_00191.json
+Which country did Gabriel Batistuta play football for?,Argentina,Argentina,1,1,1,1,1,same,"| country             |
+| ------------------- |
+| Argentina (wd:Q414) |","SELECT ?country WHERE {
+  wd:Q170376 wdt:P1532 ?country
+}",CompMix_table_simple_qa_00188.json
+is jaffa cakes a biscuit or a cake,Cake,cake,1,1,1,1,1,same,"| category         |
+| ---------------- |
+| cake (wd:Q13276) |","SELECT ?category WHERE {
+  wd:Q29330 wdt:P279 ?category
+}",NQ_table_test_simple_00173.json
+when did world war 2 officially start and end,1 September 1939 – 2 September 1945,1939-09-01T00:00:00Z|1945-09-02T00:00:00Z,2,2,1,1,1,same,"| start_time                          | end_time                            |
+| ----------------------------------- | ----------------------------------- |
+| 1939-09-01T00:00:00Z (xsd:dateTime) | 1945-09-02T00:00:00Z (xsd:dateTime) |","SELECT ?start_time ?end_time WHERE {
+  wd:Q362 wdt:P580 ?start_time .
+  wd:Q362 wdt:P582 ?end_time .
+}",NQ_table_test_simple_00189.json
+who carried florida by 537 votes in 2000,George W. Bush,George W. Bush,1,1,1,1,1,same,"| winner                   |
+| ------------------------ |
+| George W. Bush (wd:Q207) |","SELECT ?winner WHERE {
+  wd:Q7892747 wdt:P991 ?winner
+}",NQ_table_test_simple_00192.json
+who wrote the book the origin of species,Charles Darwin,Charles Darwin,1,1,1,1,1,same,"| author                    |
+| ------------------------- |
+| Charles Darwin (wd:Q1035) |","SELECT ?author WHERE {
+  wd:Q20124 wdt:P50 ?author
+}",NQ_table_test_simple_00214.json
+which place of publication The Grapes of Wrath book?,New York City,New York City,1,1,1,1,1,same,"| place                  |
+| ---------------------- |
+| New York City (wd:Q60) |","SELECT ?place WHERE {
+  wd:Q215983 wdt:P291 ?place .
+}",CompMix_table_simple_qa_00231.json
+what was the language of the  Emma book?,English,|English,1,1,1,1,1,same,"| book | language           |
+| ---- | ------------------ |
+|      | English (wd:Q1860) |","SELECT ?book ?language WHERE {
+  wd:Q223880 wdt:P407 ?language
+}",CompMix_table_simple_qa_00215.json
+who is the president of Paris Saint-Germain F.C team?,Nasser Al-Khelaifi,Nasser Al-Khelaifi,1,1,1,1,1,same,"| president                       |
+| ------------------------------- |
+| Nasser Al-Khelaifi (wd:Q776008) |","SELECT ?president WHERE {
+  wd:Q483020 wdt:P488 ?president
+}",CompMix_table_simple_qa_00211.json
+when did the tv show the waltons first air,"September 14, 1972",1972-09-14T00:00:00Z,1,1,1,1,1,same,"| startEvent                          |
+| ----------------------------------- |
+| 1972-09-14T00:00:00Z (xsd:dateTime) |","SELECT ?startEvent WHERE {
+  wd:Q48777 wdt:P580 ?startEvent .
+}",NQ_table_test_simple_00873.json
+Who Composes the music in the tv series The Tunnel?,Adrian Johnston,Adrian Johnston,1,1,1,1,1,same,"| composer                     |
+| ---------------------------- |
+| Adrian Johnston (wd:Q373231) |","SELECT ?composer WHERE {
+  wd:Q15104549 wdt:P86 ?composer
+}",CompMix_table_simple_qa_00230.json
+Who gave the music of the film 211?,Frederik Wiedmann,Frederik Wiedmann,1,1,1,1,1,same,"| composer                      |
+| ----------------------------- |
+| Frederik Wiedmann (wd:Q97308) |","SELECT ?composer WHERE {
+  wd:Q54924330 wdt:P86 ?composer
+}",CompMix_table_simple_qa_00241.json
+who owns the delano hotel in las vegas,MGM Resorts International,MGM Resorts International,1,1,1,1,1,same,"| owner                                  |
+| -------------------------------------- |
+| MGM Resorts International (wd:Q568532) |","SELECT ?owner WHERE {
+  wd:Q2297323 wdt:P127 ?owner
+}",NQ_table_test_simple_00701.json
+Who is the film composer for Troy?,James Horner,James Horner,1,1,1,1,1,same,"| composer                  |
+| ------------------------- |
+| James Horner (wd:Q106221) |","SELECT ?composer WHERE {
+  wd:Q186587 wdt:P86 ?composer
+}",CompMix_table_simple_qa_00292.json
+In which city is Millennium Stadium located?,Cardiff,Cardiff,1,1,1,1,1,same,"| city                |
+| ------------------- |
+| Cardiff (wd:Q10690) |","SELECT ?city WHERE {
+  wd:Q204496 wdt:P131 ?city
+}",CompMix_table_simple_qa_00275.json
+Who directs the tv series Barbarians?,Barbara Eder,Barbara Eder,1,1,1,1,1,same,"| director                    |
+| --------------------------- |
+| Barbara Eder (wd:Q27690237) |","SELECT ?director WHERE {
+  wd:Q99591764 wdt:P57 ?director
+}",CompMix_table_simple_qa_00247.json
+when are the opening ceremonies for the 2018 olympic games,9 February 2018,|2018-02-09T00:00:00Z,1,1,1,1,1,same,"| olympics | startTime                           |
+| -------- | ----------------------------------- |
+|          | 2018-02-09T00:00:00Z (xsd:dateTime) |","SELECT ?olympics ?startTime WHERE {
+  wd:Q9680 wdt:P580 ?startTime
+}",NQ_table_test_simple_00035.json
+who won season 16 on dancing with the stars,Kellie Pickler | Derek Hough,"Derek Hough
+Kellie Pickler",2,2,1,1,1,same,"| winner                      |
+| --------------------------- |
+| Derek Hough (wd:Q1189327)   |
+| Kellie Pickler (wd:Q234445) |","SELECT ?winner WHERE {
+  wd:Q5215617 wdt:P1346 ?winner .
+}",NQ_table_test_simple_00036.json
+who won last year's grand national 2017,One For Arthur,One For Arthur,1,1,1,1,1,same,"| winner                        |
+| ----------------------------- |
+| One For Arthur (wd:Q30633990) |","SELECT ?winner WHERE {
+  wd:Q28864603 wdt:P1346 ?winner
+}",NQ_table_test_simple_00147.json
+when did somewhere over the rainbow come out,1939,|1939-01-01T00:00:00Z,1,1,1,1,1,same,"| song | publicationDate                     |
+| ---- | ----------------------------------- |
+|      | 1939-01-01T00:00:00Z (xsd:dateTime) |","SELECT ?song ?publicationDate WHERE {
+  wd:Q161402 wdt:P577 ?publicationDate
+}",NQ_table_test_simple_00830.json
+What is the name of the author who wrote A Tale of Two Cities?,Charles Dickens,Charles Dickens,1,1,1,1,1,same,"| author                     |
+| -------------------------- |
+| Charles Dickens (wd:Q5686) |","SELECT ?author WHERE {
+  wd:Q308918 wdt:P50 ?author
+}",CompMix_table_simple_qa_00287.json
+when was 13 reasons why released on netflix,"March 31, 2017",2017-03-31T00:00:00Z,1,1,1,1,1,same,"| startTime                           |
+| ----------------------------------- |
+| 2017-03-31T00:00:00Z (xsd:dateTime) |","SELECT ?startTime WHERE {
+  wd:Q18464203 wdt:P580 ?startTime
+}",NQ_table_test_simple_00132.json
+who wrote the song if i were a boy,BC Jean | Toby Gad,"Toby Gad
+BC Jean",2,2,1,1,1,same,"| lyricist              |
+| --------------------- |
+| Toby Gad (wd:Q106567) |
+| BC Jean (wd:Q3376908) |","SELECT ?lyricist WHERE {
+  wd:Q147722 wdt:P676 ?lyricist
+}",NQ_table_test_simple_00869.json
+when did rob dyrdek's fantasy factory end,"March 5, 2015",2015-03-05T00:00:00Z,1,1,1,1,1,same,"| endTime                             |
+| ----------------------------------- |
+| 2015-03-05T00:00:00Z (xsd:dateTime) |","SELECT ?endTime WHERE {
+  wd:Q7340095 wdt:P582 ?endTime
+}",NQ_table_test_simple_00852.json
+where does the path train stop in newark,Newark Penn Station,"Newark Penn Station
+Newark Penn Station
+Newark Penn Station",1,3,1,1,1,same,"| station                           |
+| --------------------------------- |
+| Newark Penn Station (wd:Q1745642) |
+| Newark Penn Station (wd:Q1745642) |
+| Newark Penn Station (wd:Q1745642) |","SELECT ?station WHERE {
+  ?station wdt:P16 wd:Q1055811 .
+  ?station rdfs:label ?label .
+  FILTER(CONTAINS(STR(?label) , 'Newark Penn'))
+}",NQ_table_test_simple_00848.json
+when was the titanic started to be built,31 March 1909,1909-03-31T00:00:00Z,1,1,1,1,1,same,"| startDate                           |
+| ----------------------------------- |
+| 1909-03-31T00:00:00Z (xsd:dateTime) |","SELECT ?startDate WHERE {
+  wd:Q25173 wdt:P580 ?startDate .
+}",NQ_table_test_simple_00138.json
+What is Stadio Artemio Franchi's home team?,ACF Fiorentina,ACF Fiorentina,1,1,1,1,1,same,"| team                      |
+| ------------------------- |
+| ACF Fiorentina (wd:Q2052) |","SELECT ?team WHERE {
+  wd:Q270474 wdt:P466 ?team
+}",CompMix_table_simple_qa_00265.json
+What is Game of Thrones based on?,A Song of Ice and Fire,A Song of Ice and Fire,1,1,1,1,1,same,"| series                             |
+| ---------------------------------- |
+| A Song of Ice and Fire (wd:Q45875) |","SELECT ?series WHERE {
+  wd:Q23572 wdt:P144 ?series .
+  FILTER(?series = wd:Q45875)
+}",CompMix_table_simple_qa_00262.json
+What is the One Hundred Years of Solitude book's country of origin?,Argentina,Argentina,1,1,1,1,1,same,"| country             |
+| ------------------- |
+| Argentina (wd:Q414) |","SELECT ?country WHERE {
+  wd:Q178869 wdt:P495 ?country
+}",CompMix_table_simple_qa_00255.json
+what was author the book Brave New World?,Aldous Huxley,Aldous Huxley,1,1,1,1,1,same,"| author                    |
+| ------------------------- |
+| Aldous Huxley (wd:Q81447) |","SELECT ?author WHERE {
+  wd:Q191949 wdt:P50 ?author .
+}",CompMix_table_simple_qa_00257.json
+In which division did Daniel Farke manage Borussia Dortmund II?,Regionalliga West,Regionalliga West,1,1,1,1,1,same,"| league                         |
+| ------------------------------ |
+| Regionalliga West (wd:Q555836) |","SELECT ?league WHERE {
+  wd:Q865720 wdt:P118 ?league
+}",CompMix_table_simple_qa_00254.json
+Which country did Francesco Totti represent?,Italy,|Italy,1,1,1,1,1,same,"| person | country        |
+| ------ | -------------- |
+|        | Italy (wd:Q38) |","SELECT ?person ?country WHERE {
+  wd:Q20110 wdt:P1532 ?country
+}",CompMix_table_simple_qa_00249.json
+when did gaurdians of the galaxy 2 come out,"May 5, 2017",|2017-05-05T00:00:00Z,1,1,1,1,1,same,"| film | date                                |
+| ---- | ----------------------------------- |
+|      | 2017-05-05T00:00:00Z (xsd:dateTime) |","SELECT ?film ?date WHERE {
+  wd:Q20001199 wdt:P577 ?date
+}",NQ_table_test_simple_00644.json
+when was the young and the restless first aired,"March 26, 1973",1973-03-26T00:00:00Z,1,1,1,1,1,same,"| airDate                             |
+| ----------------------------------- |
+| 1973-03-26T00:00:00Z (xsd:dateTime) |","SELECT ?airDate WHERE {
+  wd:Q849627 wdt:P580 ?airDate
+}",NQ_table_test_simple_00642.json
+What is the basis for the book unexpected journey?,The Hobbit,The Hobbit,1,1,1,1,1,same,"| basis                  |
+| ---------------------- |
+| The Hobbit (wd:Q74287) |","SELECT ?basis WHERE {
+  wd:Q80379 wdt:P144 ?basis
+}",CompMix_table_simple_qa_00303.json
+who sings that aint no way to go,Brooks & Dunn,Brooks & Dunn,1,1,1,1,1,same,"| artist                     |
+| -------------------------- |
+| Brooks & Dunn (wd:Q929683) |","SELECT ?artist WHERE {
+  wd:Q7711137 wdt:P175 ?artist
+}",NQ_table_test_simple_00788.json
+what was the first capital city of australia,Sydney,Sydney,1,1,1,1,1,same,"| capital           |
+| ----------------- |
+| Sydney (wd:Q3130) |","SELECT ?capital WHERE {
+  wd:Q3224 wdt:P36 ?capital
+}",NQ_table_test_simple_00049.json
+where do the sharks play in san jose,SAP Center,SAP Center,1,1,1,1,1,same,"| homeVenue               |
+| ----------------------- |
+| SAP Center (wd:Q261863) |","SELECT ?homeVenue WHERE {
+  wd:Q206381 wdt:P115 ?homeVenue .
+}",NQ_table_test_simple_00043.json
+where did they film the game of thrones,Canada | Croatia | Iceland | Malta | Morocco | Spain | Northern Ireland | Scotland | United States,"Morocco
+United Kingdom
+Canada
+Iceland
+Scotland
+Croatia
+Malta
+Northern Ireland
+Spain
+United States",9,10,1,0.9683547139,0.9839229759,same,"| location                  |
+| ------------------------- |
+| Morocco (wd:Q1028)        |
+| United Kingdom (wd:Q145)  |
+| Canada (wd:Q16)           |
+| Iceland (wd:Q189)         |
+| Scotland (wd:Q22)         |
+| Croatia (wd:Q224)         |
+| Malta (wd:Q233)           |
+| Northern Ireland (wd:Q26) |
+| Spain (wd:Q29)            |
+| United States (wd:Q30)    |","SELECT ?location WHERE {
+  wd:Q23572 wdt:P915 ?location
+}",NQ_table_test_simple_00711.json
+who was the original host of what's my line,John Daly,John Charles Daly,1,1,0.9750119448,0.9750119448,0.9750119448,same,"| host                            |
+| ------------------------------- |
+| John Charles Daly (wd:Q4260226) |","SELECT ?host WHERE {
+  wd:Q660263 wdt:P371 ?host
+}",NQ_table_test_simple_00878.json
+star cast of ab tumhare hawale watan sathiyon,Amitabh Bachchan | Akshay Kumar | Bobby Deol | Divya Khosla Kumar | Sandali Sinha | Nagma,"Akshay Kumar
+Nagma
+Bobby Deol
+Sandali Sinha
+Amitabh Bachchan",6,5,0.9433267713,1,0.9708370051,same,"| actor                       |
+| --------------------------- |
+| Akshay Kumar (wd:Q233748)   |
+| Nagma (wd:Q3523851)         |
+| Bobby Deol (wd:Q48619)      |
+| Sandali Sinha (wd:Q7415964) |
+| Amitabh Bachchan (wd:Q9570) |","SELECT ?actor WHERE {
+  wd:Q4663084 wdt:P161 ?actor
+}",NQ_table_test_simple_00946.json
+what is the creator name of Trailer Park Boys series?,Mike Clattenburg,Mike Clattenburg|Mike Clattenburg (lang:en),1,2,1,0.9319520593,0.9647776246,same,"| creator                        | creatorLabel               |
+| ------------------------------ | -------------------------- |
+| Mike Clattenburg (wd:Q3313267) | Mike Clattenburg (lang:en) |","SELECT ?creator ?creatorLabel WHERE {
+  wd:Q1400775 wdt:P170 ?creator .
+  ?creator rdfs:label ?creatorLabel .
+  FILTER(LANG(?creatorLabel) = 'en')
+}",CompMix_table_simple_qa_00002.json
+What award did The Turning Point get?,National Board of Review: Top Ten Films,"National Board of Review Award for Best Film
+National Board of Review: Top Ten Films",1,2,1,0.912045747,0.9539999223,same,"| award                                                      |
+| ---------------------------------------------------------- |
+| National Board of Review Award for Best Film (wd:Q1789102) |
+| National Board of Review: Top Ten Films (wd:Q1966965)      |","SELECT ?award WHERE {
+  wd:Q451558 wdt:P166 ?award
+}",CompMix_table_simple_qa_00143.json
+list all the planet of the ape movies,Planet of the Apes | Beneath the Planet of the Apes | Escape from the Planet of the Apes | Conquest of the Planet of the Apes | Battle for the Planet of the Apes | Planet of the Apes | Rise of the Planet of the Apes | Dawn of the Planet of the Apes | War for the Planet of the Apes,"Dawn of the Planet of the Apes|Dawn of the Planet of the Apes (lang:en)
+War for the Planet of the Apes|War for the Planet of the Apes (lang:en)
+Rise of the Planet of the Apes|Rise of the Planet of the Apes (lang:en)
+Beneath the Planet of the Apes|Beneath the Planet of the Apes (lang:en)
+Planet of the Apes|Planet of the Apes (lang:en)
+Planet of the Apes|Planet of the Apes (lang:en)",9,12,0.9398610791,0.954682822,0.9472139725,same,"| film                                          | filmLabel                                |
+| --------------------------------------------- | ---------------------------------------- |
+| Dawn of the Planet of the Apes (wd:Q11220194) | Dawn of the Planet of the Apes (lang:en) |
+| War for the Planet of the Apes (wd:Q19938437) | War for the Planet of the Apes (lang:en) |
+| Rise of the Planet of the Apes (wd:Q243983)   | Rise of the Planet of the Apes (lang:en) |
+| Beneath the Planet of the Apes (wd:Q469620)   | Beneath the Planet of the Apes (lang:en) |
+| Planet of the Apes (wd:Q469624)               | Planet of the Apes (lang:en)             |
+| Planet of the Apes (wd:Q59534)                | Planet of the Apes (lang:en)             |","SELECT ?film ?filmLabel WHERE {
+  ?film wdt:P31 wd:Q11424 .
+  ?film rdfs:label ?filmLabel .
+  FILTER(lang(?filmLabel) = 'en')
+  FILTER(?film IN(wd:Q469620 , wd:Q243983 , wd:Q11220194 , wd:Q19938437 , wd:Q59534 , wd:Q469624))
+}",NQ_table_test_simple_00603.json
+who are the permanent member of un security council,China | France | Russia | United Kingdom | United States,"France
+United Kingdom
+People's Republic of China
+Russia
+United States",5,5,0.9492339611,0.935899508,0.9425195741,same,"| member                               |
+| ------------------------------------ |
+| France (wd:Q142)                     |
+| United Kingdom (wd:Q145)             |
+| People's Republic of China (wd:Q148) |
+| Russia (wd:Q159)                     |
+| United States (wd:Q30)               |","SELECT ?member WHERE {
+  VALUES ?member {
+    wd:Q30 wd:Q145 wd:Q142 wd:Q159 wd:Q148
+  }
+  ?member wdt:P17 ?country .
+}",NQ_table_test_simple_00045.json
+when does the day of the dead end,November 2,November 1,1,1,0.9398732185,0.9398732185,0.9398732185,same,"| endDate               |
+| --------------------- |
+| November 1 (wd:Q2997) |","SELECT ?endDate WHERE {
+  wd:Q309256 wdt:P837 ?endDate
+}",NQ_table_test_simple_00229.json
+where did the first persian gulf war take place,Iraq | Kuwait | Saudi Arabia | Israel | Persian Gulf,"Arabian Peninsula
+Iraq
+Israel
+Kuwait
+Saudi Arabia",5,5,0.9326989412,0.9326989412,0.9326989412,same,"| location                      |
+| ----------------------------- |
+| Arabian Peninsula (wd:Q31945) |
+| Iraq (wd:Q796)                |
+| Israel (wd:Q801)              |
+| Kuwait (wd:Q817)              |
+| Saudi Arabia (wd:Q851)        |","SELECT ?location WHERE {
+  wd:Q37643 wdt:P276 ?location
+}",NQ_table_test_simple_00353.json
+What is Paolo Maldini's surname?,Maldini,Paolo Maldini,1,1,0.901829958,0.901829958,0.901829958,same,"| person                     |
+| -------------------------- |
+| Paolo Maldini (wd:Q483027) |","SELECT ?person WHERE {
+  ?person rdfs:label 'Paolo Maldini' @en
+}",CompMix_table_simple_qa_00264.json
+when was the mission san antonio de valero built,1718,1718-05-01T00:00:00Z,1,1,0.995,0.995,0.995,Higher accuracy in Wikidata than in Table,"| inception                           |
+| ----------------------------------- |
+| 1718-05-01T00:00:00Z (xsd:dateTime) |","SELECT ?inception WHERE {
+  wd:Q2636724 wdt:P571 ?inception
+}",NQ_table_test_simple_00281.json
+when did first fast and furious come out,2001,2001-06-22T00:00:00Z,1,1,0.995,0.995,0.995,Higher accuracy in Wikidata than in Table,"| releaseDate                         |
+| ----------------------------------- |
+| 2001-06-22T00:00:00Z (xsd:dateTime) |","SELECT ?releaseDate WHERE {
+  wd:Q155476 wdt:P577 ?releaseDate
+}",NQ_table_test_simple_00962.json
+what nba team did derrick rose play for,Chicago Bulls | New York Knicks | Cleveland Cavaliers | Minnesota Timberwolves,"Chicago Bulls
+New York Knicks
+Cleveland Cavaliers
+Memphis Grizzlies
+Detroit Pistons
+Minnesota Timberwolves
+Memphis Tigers men's basketball",4,7,1,0.8679347719,0.929298801,Higher accuracy in Wikidata than in Table,"| team                                          |
+| --------------------------------------------- |
+| Chicago Bulls (wd:Q128109)                    |
+| New York Knicks (wd:Q131364)                  |
+| Cleveland Cavaliers (wd:Q162990)              |
+| Memphis Grizzlies (wd:Q165529)                |
+| Detroit Pistons (wd:Q169661)                  |
+| Minnesota Timberwolves (wd:Q170558)           |
+| Memphis Tigers men's basketball (wd:Q6719876) |","SELECT ?team WHERE {
+  wd:Q205326 wdt:P54 ?team
+}",NQ_table_test_simple_00569.json
+who starred in the movie on golden pond,Katharine Hepburn | Henry Fonda | Jane Fonda | Doug McKeon | Dabney Coleman | William Lanteau,"William Lanteau|William Lanteau (lang:en)
+Henry Fonda|Henry Fonda (lang:en)
+Doug McKeon|Doug McKeon (lang:en)
+Jane Fonda|Jane Fonda (lang:en)
+Dabney Coleman|Dabney Coleman (lang:en)
+Katharine Hepburn|Katharine Hepburn (lang:en)
+Troy Garity|Troy Garity (lang:en)",6,14,1,0.8533338095,0.9208635866,Higher accuracy in Wikidata than in Table,"| actor                          | actorLabel                  |
+| ------------------------------ | --------------------------- |
+| William Lanteau (wd:Q16013023) | William Lanteau (lang:en)   |
+| Henry Fonda (wd:Q19155)        | Henry Fonda (lang:en)       |
+| Doug McKeon (wd:Q20973982)     | Doug McKeon (lang:en)       |
+| Jane Fonda (wd:Q41142)         | Jane Fonda (lang:en)        |
+| Dabney Coleman (wd:Q446717)    | Dabney Coleman (lang:en)    |
+| Katharine Hepburn (wd:Q56016)  | Katharine Hepburn (lang:en) |
+| Troy Garity (wd:Q918866)       | Troy Garity (lang:en)       |","SELECT ?actor ?actorLabel WHERE {
+  wd:Q451603 wdt:P161 ?actor .
+  ?actor rdfs:label ?actorLabel .
+  FILTER(LANG(?actorLabel) = 'en')
+}",NQ_table_test_simple_00609.json
+Actor Behind Joseph Cooper in Interstellar?,Matthew McConaughey,"Matthew McConaughey|Matthew McConaughey (lang:af)
+Matthew McConaughey|Matthew McConaughey (lang:an)
+Matthew McConaughey|Matthew McConaughey (lang:ast)
+Matthew McConaughey|Matthew McConaughey (lang:ca)
+Matthew McConaughey|Matthew McConaughey (lang:co)
+...|...
+Matthew McConaughey|Matthew McConaughey (lang:tl)
+Matthew McConaughey|Matthew McConaughey (lang:tr)
+Matthew McConaughey|Matthew McConaughey (lang:uz)
+Matthew McConaughey|Matthew McConaughey (lang:vi)
+Matthew McConaughey|Matthew McConaughey (lang:yo)",1,22,1,0.8502331471,0.9190551455,Higher accuracy in Wikidata than in Table,"| actor                            | actorLabel                     |
+| -------------------------------- | ------------------------------ |
+| Matthew McConaughey (wd:Q188955) | Matthew McConaughey (lang:af)  |
+| Matthew McConaughey (wd:Q188955) | Matthew McConaughey (lang:an)  |
+| Matthew McConaughey (wd:Q188955) | Matthew McConaughey (lang:ast) |
+| Matthew McConaughey (wd:Q188955) | Matthew McConaughey (lang:ca)  |
+| Matthew McConaughey (wd:Q188955) | Matthew McConaughey (lang:co)  |
+| ...                              | ...                            |
+| Matthew McConaughey (wd:Q188955) | Matthew McConaughey (lang:tl)  |
+| Matthew McConaughey (wd:Q188955) | Matthew McConaughey (lang:tr)  |
+| Matthew McConaughey (wd:Q188955) | Matthew McConaughey (lang:uz)  |
+| Matthew McConaughey (wd:Q188955) | Matthew McConaughey (lang:vi)  |
+| Matthew McConaughey (wd:Q188955) | Matthew McConaughey (lang:yo)  |","SELECT ?actor ?actorLabel WHERE {
+  wd:Q13417189 wdt:P161 ?actor .
+  ?actor rdfs:label ?actorLabel .
+  FILTER(LCASE(CONCAT(' ' , ?actorLabel)) = LCASE(CONCAT(' ' , 'matthew mcconaughey')))
+}",CompMix_table_simple_qa_00103.json
+what type of novel is goodbye mr chips,Psychological fiction,"psychological fiction
+children's fiction",1,2,1,0.8347685635,0.9099442623,Higher accuracy in Wikidata than in Table,"| genre                                 |
+| ------------------------------------- |
+| psychological fiction (wd:Q101240581) |
+| children's fiction (wd:Q56451354)     |","SELECT ?genre WHERE {
+  wd:Q3268056 wdt:P136 ?genre
+}",NQ_table_test_simple_00522.json
+who is the largest supermarket chain in the uk,Tesco,"Kipa
+Tesco
+Tesco
+Tesco
+Tesco
+...
+Tesco
+Tesco
+Tesco
+Tesco Metro
+Tesco Metro",1,11,1,0.8247643005,0.903968036,Higher accuracy in Wikidata than in Table,"| supermarket                |
+| -------------------------- |
+| Kipa (wd:Q218006)          |
+| Tesco (wd:Q487494)         |
+| Tesco (wd:Q487494)         |
+| Tesco (wd:Q487494)         |
+| Tesco (wd:Q487494)         |
+| ...                        |
+| Tesco (wd:Q487494)         |
+| Tesco (wd:Q487494)         |
+| Tesco (wd:Q487494)         |
+| Tesco Metro (wd:Q57551648) |
+| Tesco Metro (wd:Q57551648) |","SELECT ?supermarket WHERE {
+  ?supermarket wdt:P31 wd:Q18043413 .
+  ?supermarket rdfs:label ?label .
+  FILTER(CONTAINS(STR(?label) , 'Tesco'))
+}",NQ_table_test_simple_00458.json
+who starred in the movie summer of 42,Jennifer O'Neill | Gary Grimes | Jerry Houser | Oliver Conant,"Jennifer O'Neill
+Gary Grimes
+Jerry Houser
+Lou Frizzell
+Christopher Norris
+Oliver Conant",4,6,1,0.7991548081,0.8883669204,Higher accuracy in Wikidata than in Table,"| actor                           |
+| ------------------------------- |
+| Jennifer O'Neill (wd:Q240460)   |
+| Gary Grimes (wd:Q3098560)       |
+| Jerry Houser (wd:Q3177473)      |
+| Lou Frizzell (wd:Q3260124)      |
+| Christopher Norris (wd:Q530672) |
+| Oliver Conant (wd:Q7087460)     |","SELECT ?actor WHERE {
+  wd:Q1781831 wdt:P161 ?actor
+}",NQ_table_test_simple_00613.json
+who is the owner of the mandalay bay in vegas,MGM Resorts International,"Mandalay Resort Group
+MGM Resorts International",1,2,1,0.7450592965,0.85390714,Higher accuracy in Wikidata than in Table,"| owner                                  |
+| -------------------------------------- |
+| Mandalay Resort Group (wd:Q1152357)    |
+| MGM Resorts International (wd:Q568532) |","SELECT ?owner WHERE {
+  wd:Q1368043 wdt:P127 ?owner
+}",NQ_table_test_simple_00520.json
+What is the name of the actor who won the Academy Award for Best Actor for his performance in The King's Speech?,Colin Firth,"Colin Firth
+Geoffrey Rush",1,2,1,0.7335051298,0.8462681964,Higher accuracy in Wikidata than in Table,"| actor                      |
+| -------------------------- |
+| Colin Firth (wd:Q162492)   |
+| Geoffrey Rush (wd:Q166272) |","SELECT ?actor WHERE {
+  wd:Q160060 wdt:P161 ?actor .
+  ?actor wdt:P166 wd:Q103916
+}",CompMix_table_simple_qa_00294.json
+Who won the Oscar for Best Actor for the film The King's Speech?,Colin Firth,"Colin Firth
+Geoffrey Rush",1,2,1,0.7335051298,0.8462681964,Higher accuracy in Wikidata than in Table,"| actor                      |
+| -------------------------- |
+| Colin Firth (wd:Q162492)   |
+| Geoffrey Rush (wd:Q166272) |","SELECT ?actor WHERE {
+  wd:Q160060 wdt:P161 ?actor .
+  ?actor wdt:P166 wd:Q103916
+}",CompMix_table_simple_qa_00248.json
+Francesco Totti played for which country?,Italy,Francesco Totti|Italy,1,2,1,0.7331804931,0.8460520944,Higher accuracy in Wikidata than in Table,"| player                      | country        |
+| --------------------------- | -------------- |
+| Francesco Totti (wd:Q20110) | Italy (wd:Q38) |","SELECT ?player ?country WHERE {
+  ?player wdt:P1532 ?country .
+  ?player rdfs:label ""Francesco Totti"" @en .
+}",CompMix_table_simple_qa_00281.json
+who starred in the movie romancing the stone,Michael Douglas | Kathleen Turner | Danny DeVito | Alfonso Arau | Manuel Ojeda,"Kymberly Herrin
+Michael Douglas
+Kathleen Turner
+Holland Taylor
+Danny DeVito
+Ted White
+Mary Ellen Trainor
+Alfonso Arau
+Manuel Ojeda",5,9,1,0.7121724255,0.8318933477,Higher accuracy in Wikidata than in Table,"| actor                           |
+| ------------------------------- |
+| Kymberly Herrin (wd:Q104518788) |
+| Michael Douglas (wd:Q119798)    |
+| Kathleen Turner (wd:Q222008)    |
+| Holland Taylor (wd:Q235198)     |
+| Danny DeVito (wd:Q26806)        |
+| Ted White (wd:Q3517052)         |
+| Mary Ellen Trainor (wd:Q442310) |
+| Alfonso Arau (wd:Q920072)       |
+| Manuel Ojeda (wd:Q944345)       |","SELECT ?actor WHERE {
+  wd:Q502629 wdt:P161 ?actor
+}",NQ_table_test_simple_00920.json
+who does dwyane wade play for right now,Miami Heat,"Chicago Bulls
+Cleveland Cavaliers
+Miami Heat
+Marquette Golden Eagles men's basketball",1,4,1,0.7038866878,0.8262130256,Higher accuracy in Wikidata than in Table,"| team                                                   |
+| ------------------------------------------------------ |
+| Chicago Bulls (wd:Q128109)                             |
+| Cleveland Cavaliers (wd:Q162990)                       |
+| Miami Heat (wd:Q169138)                                |
+| Marquette Golden Eagles men's basketball (wd:Q6772588) |","SELECT ?team WHERE {
+  wd:Q31683 wdt:P54 ?team
+}",NQ_table_test_simple_00013.json
+What is the Mohamed Salah sport number?,11,"11
+15
+17
+22
+31
+74",1,6,1,0.6709842235,0.8031006087,Higher accuracy in Wikidata than in Table,"| number |
+| ------ |
+| 11     |
+| 15     |
+| 17     |
+| 22     |
+| 31     |
+| 74     |","SELECT ?number WHERE {
+  wd:Q1354960 wdt:P1618 ?number
+}",CompMix_table_simple_qa_00072.json
+Who played the character of Frodo Baggins in The Lord of the Rings?,Elijah Wood,"Ian Holm
+Elijah Wood",1,2,1,0.6614035964,0.7961985851,Higher accuracy in Wikidata than in Table,"| actor                    |
+| ------------------------ |
+| Ian Holm (wd:Q223091)    |
+| Elijah Wood (wd:Q483771) |","SELECT ?actor WHERE {
+  wd:Q177329 wdt:P175 ?actor .
+}",CompMix_table_simple_qa_00189.json
+what is the longest english word in the dictionary,Pneumonoultramicroscopicsilicovolcanoconiosis,"wd:L7867
+pneumonoultramicroscopicsilicovolcanoconiosis (wd:L7867-F1)
+pneumonoultramicroscopicsilicovolcanoconiosis",1,3,1,0.6558271305,0.7921444436,Higher accuracy in Wikidata than in Table,"| word                                                        |
+| ----------------------------------------------------------- |
+| wd:L7867                                                    |
+| pneumonoultramicroscopicsilicovolcanoconiosis (wd:L7867-F1) |
+| pneumonoultramicroscopicsilicovolcanoconiosis (wd:Q102)     |","SELECT ?word WHERE {
+  ?word rdfs:label ""pneumonoultramicroscopicsilicovolcanoconiosis"" @en
+}",NQ_table_test_simple_00038.json
+Who played the role of Jonas Kahnwald as teen in Dark?,Louis Hofmann,"Dietrich Hollinderbäumer
+Andreas Pietschmann
+Louis Hofmann",1,3,1,0.6554423968,0.7918637315,Higher accuracy in Wikidata than in Table,"| actor                                  |
+| -------------------------------------- |
+| Dietrich Hollinderbäumer (wd:Q1223803) |
+| Andreas Pietschmann (wd:Q125338)       |
+| Louis Hofmann (wd:Q1871731)            |","SELECT ?actor WHERE {
+  wd:Q65921603 wdt:P175 ?actor
+}",CompMix_table_simple_qa_00140.json
+who did dwight howard play for last year,Atlanta Hawks | Charlotte Hornets,"Taoyuan Leopards
+Los Angeles Lakers
+Philadelphia 76ers
+Atlanta Hawks
+Orlando Magic
+Houston Rockets
+Charlotte Hornets
+Washington Wizards",2,8,1,0.6255365312,0.7696370019,Higher accuracy in Wikidata than in Table,"| team                             |
+| -------------------------------- |
+| Taoyuan Leopards (wd:Q108459009) |
+| Los Angeles Lakers (wd:Q121783)  |
+| Philadelphia 76ers (wd:Q138089)  |
+| Atlanta Hawks (wd:Q159893)       |
+| Orlando Magic (wd:Q161337)       |
+| Houston Rockets (wd:Q161345)     |
+| Charlotte Hornets (wd:Q163480)   |
+| Washington Wizards (wd:Q169165)  |","SELECT ?team WHERE {
+  wd:Q25278 wdt:P54 ?team
+}",NQ_table_test_simple_00167.json
+when did the battle of bull run start,"July 21, 1861",First Battle of Bull Run|1861-07-21T00:00:00Z,1,2,1,0.6202225685,0.7656016902,Higher accuracy in Wikidata than in Table,"| battle                                | date                                |
+| ------------------------------------- | ----------------------------------- |
+| First Battle of Bull Run (wd:Q221469) | 1861-07-21T00:00:00Z (xsd:dateTime) |","SELECT ?battle ?date WHERE {
+  ?battle wdt:P585 ?date .
+  FILTER(?battle = wd:Q221469)
+}",NQ_table_test_simple_00538.json
+where does the water come from to fill lake eyre,Warburton River,"Diamantina River
+Georgina River
+Frome River
+Cooper Creek
+Warburton River",1,5,1,0.6173005223,0.7633714499,Higher accuracy in Wikidata than in Table,"| river                          |
+| ------------------------------ |
+| Diamantina River (wd:Q1208608) |
+| Georgina River (wd:Q1509393)   |
+| Frome River (wd:Q21911442)     |
+| Cooper Creek (wd:Q432278)      |
+| Warburton River (wd:Q956882)   |","SELECT DISTINCT ?river WHERE {
+  wd:Q179970 wdt:P200 ?river
+}",NQ_table_test_simple_00306.json
+Who was the shirt sponsor for FC Cincinnati soccer club?,Mercy Health,"Mercy Health
+Toyota",1,2,1,0.5859851688,0.7389541596,Higher accuracy in Wikidata than in Table,"| sponsor                    |
+| -------------------------- |
+| Mercy Health (wd:Q5053169) |
+| Toyota (wd:Q53268)         |","SELECT ?sponsor WHERE {
+  wd:Q20855983 wdt:P859 ?sponsor
+}",CompMix_table_simple_qa_00214.json
+which country has the smallest population in europe,Vatican City,Vatican City|882.0,1,2,1,0.544091925,0.7047403282,Higher accuracy in Wikidata than in Table,"| country                | population          |
+| ---------------------- | ------------------- |
+| Vatican City (wd:Q237) | 882.0 (xsd:decimal) |","SELECT ?country ?population WHERE {
+  ?country wdt:P31 wd:Q6256 .
+  ?country wdt:P30 wd:Q46 .
+  ?country wdt:P1082 ?population .
+}
+ORDER BY ?population
+LIMIT 1",NQ_table_test_simple_00440.json
+who wrote shes always a woman to me,Billy Joel,She's Always a Woman|Billy Joel,1,2,1,0.5375280529,0.6992107258,Higher accuracy in Wikidata than in Table,"| song                               | lyricist                |
+| ---------------------------------- | ----------------------- |
+| She's Always a Woman (wd:Q7491784) | Billy Joel (wd:Q194333) |","SELECT ?song ?lyricist WHERE {
+  ?song wdt:P676 ?lyricist .
+  ?song rdfs:label ""She's Always a Woman"" @en .
+}",NQ_table_test_simple_00730.json
+what is the notable work by the Composer Tan Dun?,The First Emperor,"The First Emperor
+Marco Polo
+Martial Arts Trilogy",1,3,1,0.5249836793,0.6885105544,Higher accuracy in Wikidata than in Table,"| work                                |
+| ----------------------------------- |
+| The First Emperor (wd:Q5236883)     |
+| Marco Polo (wd:Q6757680)            |
+| Martial Arts Trilogy (wd:Q97067138) |","SELECT ?work WHERE {
+  wd:Q314176 wdt:P800 ?work
+}",CompMix_table_simple_qa_00027.json
+Who is the director of the film Encanto?,Jared Bush,"Byron Howard
+Jared Bush
+Charise Castro Smith",1,3,1,0.5204791327,0.6846251573,Higher accuracy in Wikidata than in Table,"| director                            |
+| ----------------------------------- |
+| Byron Howard (wd:Q1018606)          |
+| Jared Bush (wd:Q20995253)           |
+| Charise Castro Smith (wd:Q29652833) |","SELECT ?director WHERE {
+  wd:Q103372692 wdt:P57 ?director
+}",CompMix_table_simple_qa_00088.json
+director of the film Encanto?,Jared Bush,"Byron Howard
+Jared Bush
+Charise Castro Smith",1,3,1,0.5204791327,0.6846251573,Higher accuracy in Wikidata than in Table,"| director                            |
+| ----------------------------------- |
+| Byron Howard (wd:Q1018606)          |
+| Jared Bush (wd:Q20995253)           |
+| Charise Castro Smith (wd:Q29652833) |","SELECT ?director WHERE {
+  wd:Q103372692 wdt:P57 ?director
+}",CompMix_table_simple_qa_00152.json
+Name the actor playing the role of Ethan Burke in the TV series Wayward Pines?,Matt Dillon,"Charlie Tahan
+Tim Griffin
+Matt Dillon
+Carla Gugino
+Melissa Leo
+Juliette Lewis
+Shannyn Sossamon
+Terrence Howard
+Toby Jones
+Reed Diamond",1,10,1,0.4310004413,0.6023763919,Higher accuracy in Wikidata than in Table,"| actor                         |
+| ----------------------------- |
+| Charlie Tahan (wd:Q1190055)   |
+| Tim Griffin (wd:Q15260426)    |
+| Matt Dillon (wd:Q193070)      |
+| Carla Gugino (wd:Q228871)     |
+| Melissa Leo (wd:Q229410)      |
+| Juliette Lewis (wd:Q230523)   |
+| Shannyn Sossamon (wd:Q232397) |
+| Terrence Howard (wd:Q296500)  |
+| Toby Jones (wd:Q342419)       |
+| Reed Diamond (wd:Q977086)     |","SELECT ?actor WHERE {
+  wd:Q16867394 wdt:P161 ?actor .
+}",CompMix_table_simple_qa_00106.json
+"Who won the best cinematography award in British Academy Film Awards for""Blade Runner""?",Jordan Cronenweth,"Fanny and Alexander|Sven Nykvist
+Blade Runner|Jordan Cronenweth",1,4,1,0.4234950431,0.5950074012,Higher accuracy in Wikidata than in Table,"| film                             | cinematographer                |
+| -------------------------------- | ------------------------------ |
+| Fanny and Alexander (wd:Q165651) | Sven Nykvist (wd:Q312290)      |
+| Blade Runner (wd:Q184843)        | Jordan Cronenweth (wd:Q715198) |","SELECT ?film ?cinematographer WHERE {
+  ?film wdt:P344 ?cinematographer .
+  ?film wdt:P166 wd:Q778870 .
+}",CompMix_table_simple_qa_00221.json
+Which Tears for Fears member wrote the songs on The Hurting?,Roland Orzabal,"Ian Stanley
+Manny Elias
+Roland Orzabal
+Curt Smith",1,4,1,0.4214593433,0.5929952837,Higher accuracy in Wikidata than in Table,"| member                      |
+| --------------------------- |
+| Ian Stanley (wd:Q3090176)   |
+| Manny Elias (wd:Q3090578)   |
+| Roland Orzabal (wd:Q554025) |
+| Curt Smith (wd:Q924035)     |","SELECT ?member WHERE {
+  wd:Q269091 wdt:P527 ?member
+}",CompMix_table_simple_qa_00277.json
+Which grammy award did Diano Ross get?,Grammy Lifetime Achievement Award,"Commandeur des Arts et des Lettres
+Presidential Medal of Freedom
+Kennedy Center Honors
+star on Hollywood Walk of Fame
+Michigan Women's Hall of Fame
+Honorary César
+Grammy Lifetime Achievement Award",1,7,1,0.4092421149,0.5807974521,Higher accuracy in Wikidata than in Table,"| award                                             |
+| ------------------------------------------------- |
+| Commandeur des Arts et des Lettres (wd:Q13452531) |
+| Presidential Medal of Freedom (wd:Q17144)         |
+| Kennedy Center Honors (wd:Q1738793)               |
+| star on Hollywood Walk of Fame (wd:Q17985761)     |
+| Michigan Women's Hall of Fame (wd:Q6837811)       |
+| Honorary César (wd:Q727282)                       |
+| Grammy Lifetime Achievement Award (wd:Q935843)    |","SELECT ?award WHERE {
+  wd:Q36290 wdt:P166 ?award
+}",CompMix_table_simple_qa_00312.json
+when did the movie napoleon dynamite come out,"June 11, 2004","2004-01-17T00:00:00Z
+2004-06-11T00:00:00Z
+2006-05-18T00:00:00Z",1,3,1,0.4,0.5714285714,Higher accuracy in Wikidata than in Table,"| releaseDate                         |
+| ----------------------------------- |
+| 2004-01-17T00:00:00Z (xsd:dateTime) |
+| 2004-06-11T00:00:00Z (xsd:dateTime) |
+| 2006-05-18T00:00:00Z (xsd:dateTime) |","SELECT ?releaseDate WHERE {
+  wd:Q1133772 wdt:P577 ?releaseDate
+}",NQ_table_test_simple_00101.json
+when did the movie princess bride come out,"September 25, 1987","1987-09-25T00:00:00Z
+1987-11-12T00:00:00Z
+1988-10-13T00:00:00Z",1,3,1,0.4,0.5714285714,Higher accuracy in Wikidata than in Table,"| date                                |
+| ----------------------------------- |
+| 1987-09-25T00:00:00Z (xsd:dateTime) |
+| 1987-11-12T00:00:00Z (xsd:dateTime) |
+| 1988-10-13T00:00:00Z (xsd:dateTime) |","SELECT ?date WHERE {
+  wd:Q506418 wdt:P577 ?date
+}",NQ_table_test_simple_00893.json
+What is record label of Pink Floyd?,Tower Records,"Columbia Graphophone Co. Ltd.
+Harvest
+Columbia Records
+EMI
+Capitol Records
+Parlophone
+Warner Music Group
+Tower Records
+Sony Music",1,9,1,0.3964051306,0.567750894,Higher accuracy in Wikidata than in Table,"| recordLabel                                 |
+| ------------------------------------------- |
+| Columbia Graphophone Co. Ltd. (wd:Q1112471) |
+| Harvest (wd:Q1324712)                       |
+| Columbia Records (wd:Q183387)               |
+| EMI (wd:Q183412)                            |
+| Capitol Records (wd:Q193023)                |
+| Parlophone (wd:Q208909)                     |
+| Warner Music Group (wd:Q21077)              |
+| Tower Records (wd:Q2630076)                 |
+| Sony Music (wd:Q56760250)                   |","SELECT ?recordLabel WHERE {
+  wd:Q2306 wdt:P264 ?recordLabel
+}",CompMix_table_simple_qa_00187.json
+Who is the lead drummer of the band U2?,Larry Mullen Jr.,"Adam Clayton
+Dik Evans
+The Edge
+Larry Mullen Jr.
+Bono",1,5,1,0.3923699528,0.5636001438,Higher accuracy in Wikidata than in Table,"| member                        |
+| ----------------------------- |
+| Adam Clayton (wd:Q175907)     |
+| Dik Evans (wd:Q2136220)       |
+| The Edge (wd:Q714845)         |
+| Larry Mullen Jr. (wd:Q814065) |
+| Bono (wd:Q834621)             |","SELECT ?member WHERE {
+  wd:Q396 wdt:P527 ?member
+}",CompMix_table_simple_qa_00128.json
+"Who played Uncle Phil on the ""Fresh Prince of Bel-Air?""",James Avery,"Ross Bagley
+Joseph Marcell
+Janet Hubert
+Tatyana Ali
+Daphne Maxwell Reid
+Karyn Parsons
+Will Smith
+Alfonso Ribeiro
+James Avery",1,9,1,0.3701972597,0.5403561525,Higher accuracy in Wikidata than in Table,"| actor                            |
+| -------------------------------- |
+| Ross Bagley (wd:Q1320792)        |
+| Joseph Marcell (wd:Q1640024)     |
+| Janet Hubert (wd:Q2303052)       |
+| Tatyana Ali (wd:Q240541)         |
+| Daphne Maxwell Reid (wd:Q269791) |
+| Karyn Parsons (wd:Q284254)       |
+| Will Smith (wd:Q40096)           |
+| Alfonso Ribeiro (wd:Q447691)     |
+| James Avery (wd:Q493077)         |","SELECT ?actor WHERE {
+  wd:Q309063 wdt:P161 ?actor
+}",CompMix_table_simple_qa_00154.json
+"Which actor portrayed Uncle Phil on the ""Fresh Prince of Bel-Air?""",James Avery,"Ross Bagley
+Joseph Marcell
+Janet Hubert
+Tatyana Ali
+Daphne Maxwell Reid
+Karyn Parsons
+Will Smith
+Alfonso Ribeiro
+James Avery",1,9,1,0.3701972597,0.5403561525,Higher accuracy in Wikidata than in Table,"| actor                            |
+| -------------------------------- |
+| Ross Bagley (wd:Q1320792)        |
+| Joseph Marcell (wd:Q1640024)     |
+| Janet Hubert (wd:Q2303052)       |
+| Tatyana Ali (wd:Q240541)         |
+| Daphne Maxwell Reid (wd:Q269791) |
+| Karyn Parsons (wd:Q284254)       |
+| Will Smith (wd:Q40096)           |
+| Alfonso Ribeiro (wd:Q447691)     |
+| James Avery (wd:Q493077)         |","SELECT ?actor WHERE {
+  wd:Q309063 wdt:P161 ?actor
+}
+LIMIT 10",CompMix_table_simple_qa_00130.json
+"What actress played Fiona ""Fi"" Phillips in So Weird?",Cara DeLizia,"Alexz Johnson
+Cara DeLizia
+Mackenzie Phillips
+Eric Lively
+Patrick Levis
+Erik von Detten",1,6,1,0.3573782494,0.5265713511,Higher accuracy in Wikidata than in Table,"| person                          |
+| ------------------------------- |
+| Alexz Johnson (wd:Q239786)      |
+| Cara DeLizia (wd:Q434819)       |
+| Mackenzie Phillips (wd:Q452475) |
+| Eric Lively (wd:Q712936)        |
+| Patrick Levis (wd:Q7147018)     |
+| Erik von Detten (wd:Q979189)    |","SELECT DISTINCT ?person WHERE {
+  wd:Q1418559 wdt:P161 ?person
+}",CompMix_table_simple_qa_00279.json
+who is the secretary of state for northern ireland,Karen Bradley,"Owen Paterson
+Shaun Woodward
+Mo Mowlam
+Hilary Benn
+Karen Bradley
+...
+Merlyn Rees
+Douglas Hurd
+Julian Smith
+Chris Heaton-Harris
+Brandon Lewis",1,11,1,0.3572037396,0.5263818971,Higher accuracy in Wikidata than in Table,"| person                           |
+| -------------------------------- |
+| Owen Paterson (wd:Q197894)       |
+| Shaun Woodward (wd:Q261001)      |
+| Mo Mowlam (wd:Q262727)           |
+| Hilary Benn (wd:Q262742)         |
+| Karen Bradley (wd:Q264560)       |
+| ...                              |
+| Merlyn Rees (wd:Q336534)         |
+| Douglas Hurd (wd:Q337375)        |
+| Julian Smith (wd:Q390794)        |
+| Chris Heaton-Harris (wd:Q673322) |
+| Brandon Lewis (wd:Q749687)       |","SELECT ?person WHERE {
+  ?person wdt:P39 wd:Q1369302 .
+}",NQ_table_test_simple_00467.json
+who sings the songs in crazy ex girlfriend,Rachel Bloom,"Rachel Bloom|Rachel Bloom (lang:en)
+Skylar Astin|Skylar Astin (lang:en)
+Vincent Rodriguez III|Vincent Rodriguez III (lang:en)
+Gabrielle Ruiz|Gabrielle Ruiz (lang:en)
+Pete Gardner|Pete Gardner (lang:en)
+...|...
+David Hull|David Hull (lang:en)
+Paul Welsh|Paul Welsh (lang:en)
+Donna Lynne Champlin|Donna Lynne Champlin (lang:en)
+Scott Michael Foster|Scott Michael Foster (lang:en)
+Santino Fontana|Santino Fontana (lang:en)",1,22,1,0.3287052966,0.4947753237,Higher accuracy in Wikidata than in Table,"| actor                                | actorLabel                      |
+| ------------------------------------ | ------------------------------- |
+| Rachel Bloom (wd:Q16199509)          | Rachel Bloom (lang:en)          |
+| Skylar Astin (wd:Q2046436)           | Skylar Astin (lang:en)          |
+| Vincent Rodriguez III (wd:Q21931962) | Vincent Rodriguez III (lang:en) |
+| Gabrielle Ruiz (wd:Q23879969)        | Gabrielle Ruiz (lang:en)        |
+| Pete Gardner (wd:Q28911777)          | Pete Gardner (lang:en)          |
+| ...                                  | ...                             |
+| David Hull (wd:Q30122319)            | David Hull (lang:en)            |
+| Paul Welsh (wd:Q50733885)            | Paul Welsh (lang:en)            |
+| Donna Lynne Champlin (wd:Q5296398)   | Donna Lynne Champlin (lang:en)  |
+| Scott Michael Foster (wd:Q717295)    | Scott Michael Foster (lang:en)  |
+| Santino Fontana (wd:Q7420433)        | Santino Fontana (lang:en)       |","SELECT ?actor ?actorLabel WHERE {
+  wd:Q19863017 wdt:P161 ?actor .
+  ?actor rdfs:label ?actorLabel .
+  FILTER(LANG(?actorLabel) = 'en')
+}",NQ_table_test_simple_00641.json
+What is the name of the actor cast opposite Rachel Weisz in the film Constantine?,Keanu Reeves,"Pruitt Taylor Vince
+Kevin Alejandro
+Shia LaBeouf
+Tilda Swinton
+Larry Cedar
+...
+Keanu Reeves
+April Grace
+Eileen Dietz
+Francis Guinan
+José Zúñiga",1,11,1,0.3139652718,0.4778897564,Higher accuracy in Wikidata than in Table,"| actor                             |
+| --------------------------------- |
+| Pruitt Taylor Vince (wd:Q1198697) |
+| Kevin Alejandro (wd:Q1282510)     |
+| Shia LaBeouf (wd:Q180942)         |
+| Tilda Swinton (wd:Q200534)        |
+| Larry Cedar (wd:Q210792)          |
+| ...                               |
+| Keanu Reeves (wd:Q43416)          |
+| April Grace (wd:Q509013)          |
+| Eileen Dietz (wd:Q5349349)        |
+| Francis Guinan (wd:Q5481173)      |
+| José Zúñiga (wd:Q966151)          |","SELECT ?actor WHERE {
+  wd:Q219150 wdt:P161 ?actor .
+  FILTER(?actor != wd:Q134077)
+}",CompMix_table_simple_qa_00087.json
+when was half life 2 episode 2 released,"October 10, 2007","2007-10-10T00:00:00Z
+2007-12-14T00:00:00Z
+2010-05-26T00:00:00Z
+2013-05-10T00:00:00Z",1,4,1,0.3,0.4615384615,Higher accuracy in Wikidata than in Table,"| releaseDate                         |
+| ----------------------------------- |
+| 2007-10-10T00:00:00Z (xsd:dateTime) |
+| 2007-12-14T00:00:00Z (xsd:dateTime) |
+| 2010-05-26T00:00:00Z (xsd:dateTime) |
+| 2013-05-10T00:00:00Z (xsd:dateTime) |","SELECT ?releaseDate WHERE {
+  wd:Q553308 wdt:P577 ?releaseDate
+}",NQ_table_test_simple_00299.json
+when was the first mad max movie release,12 April 1979,"1979-01-01T00:00:00Z
+1979-04-12T00:00:00Z
+1980-02-29T00:00:00Z
+1980-03-21T00:00:00Z",1,4,1,0.3,0.4615384615,Higher accuracy in Wikidata than in Table,"| releaseDate                         |
+| ----------------------------------- |
+| 1979-01-01T00:00:00Z (xsd:dateTime) |
+| 1979-04-12T00:00:00Z (xsd:dateTime) |
+| 1980-02-29T00:00:00Z (xsd:dateTime) |
+| 1980-03-21T00:00:00Z (xsd:dateTime) |","SELECT ?releaseDate WHERE {
+  wd:Q248775 wdt:P577 ?releaseDate
+}",NQ_table_test_simple_00555.json
+the first vice president of india who become the president letter was,Sarvepalli Radhakrishnan,"Zakir Husain|http://www.wikidata.org/entity/Q144732
+Sarvepalli Radhakrishnan|http://www.wikidata.org/entity/Q156349
+K. R. Narayanan|http://www.wikidata.org/entity/Q235454
+R. Venkataraman|http://www.wikidata.org/entity/Q297950
+V. V. Giri|http://www.wikidata.org/entity/Q312557
+Shankar Dayal Sharma|http://www.wikidata.org/entity/Q332157
+Basappa Danappa Jatti|http://www.wikidata.org/entity/Q555247
+Mohammad Hidayatullah|http://www.wikidata.org/entity/Q557749",1,16,1,0.2782799806,0.4353975418,Higher accuracy in Wikidata than in Table,"| person                                | personIri                              |
+| ------------------------------------- | -------------------------------------- |
+| Zakir Husain (wd:Q144732)             | http://www.wikidata.org/entity/Q144732 |
+| Sarvepalli Radhakrishnan (wd:Q156349) | http://www.wikidata.org/entity/Q156349 |
+| K. R. Narayanan (wd:Q235454)          | http://www.wikidata.org/entity/Q235454 |
+| R. Venkataraman (wd:Q297950)          | http://www.wikidata.org/entity/Q297950 |
+| V. V. Giri (wd:Q312557)               | http://www.wikidata.org/entity/Q312557 |
+| Shankar Dayal Sharma (wd:Q332157)     | http://www.wikidata.org/entity/Q332157 |
+| Basappa Danappa Jatti (wd:Q555247)    | http://www.wikidata.org/entity/Q555247 |
+| Mohammad Hidayatullah (wd:Q557749)    | http://www.wikidata.org/entity/Q557749 |","SELECT ?person(STR(?person) AS ?personIri) WHERE {
+  ?person wdt:P39 wd:Q1641162 .
+  ?person wdt:P39 wd:Q313383 .
+}",NQ_table_test_simple_00301.json
+who played santa in the santa clause movies,Tim Allen,"The Santa Clause 3: The Escape Clause|Alan Arkin
+The Santa Clause 3: The Escape Clause|Jay Thomas
+The Santa Clause 3: The Escape Clause|Abigail Breslin
+The Santa Clause 3: The Escape Clause|JonTron
+The Santa Clause 3: The Escape Clause|Tim Allen
+...|...
+The Santa Clause|Jesse Collins
+The Santa Clause|Joyce Guy
+The Santa Clause|Kerrigan Mahan
+The Santa Clause|Nina Keogh
+The Santa Clause|Scott Wickware",1,22,1,0.2621280561,0.4153747393,Higher accuracy in Wikidata than in Table,"| film                                                | actor                        |
+| --------------------------------------------------- | ---------------------------- |
+| The Santa Clause 3: The Escape Clause (wd:Q1325828) | Alan Arkin (wd:Q108283)      |
+| The Santa Clause 3: The Escape Clause (wd:Q1325828) | Jay Thomas (wd:Q1684369)     |
+| The Santa Clause 3: The Escape Clause (wd:Q1325828) | Abigail Breslin (wd:Q201418) |
+| The Santa Clause 3: The Escape Clause (wd:Q1325828) | JonTron (wd:Q20277497)       |
+| The Santa Clause 3: The Escape Clause (wd:Q1325828) | Tim Allen (wd:Q208408)       |
+| ...                                                 | ...                          |
+| The Santa Clause (wd:Q497850)                       | Jesse Collins (wd:Q6186233)  |
+| The Santa Clause (wd:Q497850)                       | Joyce Guy (wd:Q6297500)      |
+| The Santa Clause (wd:Q497850)                       | Kerrigan Mahan (wd:Q6394410) |
+| The Santa Clause (wd:Q497850)                       | Nina Keogh (wd:Q7037992)     |
+| The Santa Clause (wd:Q497850)                       | Scott Wickware (wd:Q7437502) |","SELECT ?film ?actor WHERE {
+  ?film wdt:P161 ?actor .
+  ?film wdt:P1476 ?title .
+  FILTER(CONTAINS(STR(?title) , 'Santa Clause'))
+}",NQ_table_test_simple_00888.json
+what is the name of the shape with 100 sides,hectogon | hecatontagon | hecatogon,hectogon,3,1,0.8429293831,1,0.9147712233,Higher accuracy in Table than in Wikidata,"| shape                  |
+| ---------------------- |
+| hectogon (wd:Q3129199) |","SELECT ?shape WHERE {
+  ?shape rdfs:label ""hectogon"" @en
+}",NQ_table_test_simple_00482.json
+who is the owner of reading football club,Dai Yongge | Dai Xiuli,Dai Yongge,2,1,0.8320593238,1,0.9083322936,Higher accuracy in Table than in Wikidata,"| owner                     |
+| ------------------------- |
+| Dai Yongge (wd:Q30169037) |","SELECT ?owner WHERE {
+  wd:Q18729 wdt:P127 ?owner
+}",NQ_table_test_simple_00067.json
+where was the capital of the habsburg empire located,Vienna | Prague,Vienna,2,1,0.8170291185,1,0.8993021743,Higher accuracy in Table than in Wikidata,"| capital           |
+| ----------------- |
+| Vienna (wd:Q1741) |","SELECT ?capital WHERE {
+  wd:Q153136 wdt:P36 ?capital
+}",NQ_table_test_simple_00636.json
+who talks for belle in beauty and the beast,Paige O'Hara | Julie Nathanson | Jodi Benson,"Julie Nathanson
+Paige O'Hara",3,2,0.8043036461,1,0.8915391241,Higher accuracy in Table than in Wikidata,"| voiceActor                    |
+| ----------------------------- |
+| Julie Nathanson (wd:Q2344670) |
+| Paige O'Hara (wd:Q269677)     |","SELECT ?voiceActor WHERE {
+  wd:Q2502489 wdt:P725 ?voiceActor .
+}",NQ_table_test_simple_00563.json
+What are the promotion names of women wrestling promotions ?,Shimmer Women Athletes | Shine Wrestling | Women of Wrestling | Women Superstars United | ChickFight | Gorgeous Ladies of Wrestling | Ladies Major League Wrestling | Ladies Professional Wrestling Association | [[Naked Womens Wrestling League]] | Powerful Women of Wrestling | Rise Wrestling | [[World Womens Wrestling]] | Wrestlicious,Women of Wrestling,13,1,0.684827126,1,0.8129345918,Higher accuracy in Table than in Wikidata,"| promotion                        |
+| -------------------------------- |
+| Women of Wrestling (wd:Q8031615) |","SELECT ?promotion WHERE {
+  ?promotion rdfs:label ""Women of Wrestling"" @en
+}",Qampari_wikitables_simple_00021.json
+who wrote the song photograph by ringo starr,Richard Starkey | George Harrison,George Harrison,2,1,0.682920441,1,0.8115896918,Higher accuracy in Table than in Wikidata,"| lyricist                   |
+| -------------------------- |
+| George Harrison (wd:Q2643) |","SELECT ?lyricist WHERE {
+  wd:Q2984409 wdt:P676 ?lyricist
+}",NQ_table_test_simple_00868.json
+who are nominated for president of india 2017,Ram Nath Kovind | Meira Kumar,Meira Kumar,2,1,0.6813919842,1,0.8105093763,Higher accuracy in Table than in Wikidata,"| candidate                |
+| ------------------------ |
+| Meira Kumar (wd:Q467201) |","SELECT ?candidate WHERE {
+  ?candidate wdt:P3602 wd:Q24950867
+}",NQ_table_test_simple_00231.json
+what type of song is what a wonderful world,Traditional pop | jazz,jazz,2,1,0.6035310775,1,0.7527525796,Higher accuracy in Table than in Wikidata,"| genre           |
+| --------------- |
+| jazz (wd:Q8341) |","SELECT ?genre WHERE {
+  wd:Q944632 wdt:P136 ?genre
+}",NQ_table_test_simple_00486.json
+who won the medals in men's figure skating 2018,Yuzuru Hanyu | Shoma Uno | Javier Fernández,Yuzuru Hanyū,3,1,0.5666305125,1,0.7233747945,Higher accuracy in Table than in Wikidata,"| medalist                  |
+| ------------------------- |
+| Yuzuru Hanyū (wd:Q597023) |","SELECT ?medalist WHERE {
+  wd:Q47295100 wdt:P1346 ?medalist
+}",NQ_table_test_simple_00063.json
+who wrote the song after you've gone,Turner Layton | Henry Creamer,Turner Layton,2,1,0.5569971651,1,0.7154761455,Higher accuracy in Table than in Wikidata,"| composer                    |
+| --------------------------- |
+| Turner Layton (wd:Q1566965) |","SELECT ?composer WHERE {
+  wd:Q127138 wdt:P86 ?composer
+}",NQ_table_test_simple_00497.json
+when was the suite life of zack and cody made,"March 18, 2005 – September 1, 2008",2005-03-18T00:00:00Z,2,1,0.5,1,0.6666666667,Higher accuracy in Table than in Wikidata,"| releaseDate                         |
+| ----------------------------------- |
+| 2005-03-18T00:00:00Z (xsd:dateTime) |","SELECT ?releaseDate WHERE {
+  wd:Q217246 wdt:P580 ?releaseDate .
+}",NQ_table_test_simple_00548.json
+when did little house on the praire air,"September 11, 1974 – March 21, 1983",1974-09-11T00:00:00Z,2,1,0.5,1,0.6666666667,Higher accuracy in Table than in Wikidata,"| start_time                          |
+| ----------------------------------- |
+| 1974-09-11T00:00:00Z (xsd:dateTime) |","SELECT ?start_time WHERE {
+  wd:Q839869 wdt:P580 ?start_time
+}",NQ_table_test_simple_00629.json
+who does the music for shimmer and shine,Joachim Svare | Joleen Belle | Melanie Fontana | Bobby Tahouri,Bobby Tahouri,4,1,0.4794332236,1,0.6481309409,Higher accuracy in Table than in Wikidata,"| composer                     |
+| ---------------------------- |
+| Bobby Tahouri (wd:Q28457140) |","SELECT ?composer WHERE {
+  wd:Q20899576 wdt:P86 ?composer
+}",NQ_table_test_simple_00547.json
+who starred in the pirates of the caribbean,Johnny Depp | Geoffrey Rush | Kevin McNally | Orlando Bloom | Keira Knightley | Jack Davenport | Jonathan Pryce,Johnny Depp,7,1,0.4694971229,1,0.6389901901,Higher accuracy in Table than in Wikidata,"| actor                   |
+| ----------------------- |
+| Johnny Depp (wd:Q37175) |","SELECT ?actor WHERE {
+  wd:Q194318 wdt:P161 ?actor
+}",NQ_table_test_simple_00135.json
+who wrote the song balls to the wall,Udo Dirkschneider | Wolf Hoffmann | Herman Frank | Peter Baltes | Stefan Kaufmann | Deaffy,Udo Dirkschneider,6,1,0.4298963696,1,0.601297239,Higher accuracy in Table than in Wikidata,"| lyricist                      |
+| ----------------------------- |
+| Udo Dirkschneider (wd:Q70577) |","SELECT ?lyricist WHERE {
+  wd:Q2881392 wdt:P676 ?lyricist
+}",NQ_table_test_simple_00623.json
