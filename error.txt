@@ -1,0 +1,12 @@
+Based on the available human verification notes, we observe four main patterns:
+\begin{itemize}
+    \item \textbf{empty_sparql_result are strong singal for missing edge or missing qualifer} 50\% of verified errors are due to missing edge.
+    For example, for question \textit{who is the publisher of Writers & Lovers book?}, Text-to-SPARQL model has searched the correct entity, but Wikidata lacks the publisher edge(P123) to connect both entities.
+    , while \textit{Did John Prine win a Grammy for Fair & Square?} has the relevant Grammy relation but lacks the \texttt{for work(P1686)} qualifier to indicate the album name needed to connect the award to the album.
+
+    \item \textbf{Wrong property or path:} 20\% of verified errors come from plausible but incorrect SPARQL paths. For example, the 93rd Academy Award case is a false negative because the correct path requires \texttt{award received} plus \texttt{statement is subject of}; the Stephen Sommers case fails because the model searches outgoing edges from the wrong side of the relation.
+
+    \item \textbf{Execution noise:} 20\% of verified errors are not semantic failures. They return the correct answer after rerunning or produce the same answer despite an execution failure. These cases should be filtered before treating them as evidence of KG incompleteness.
+
+    \item \textbf{Hallucinated recovery:} 10\% of verified errors occur when the model compensates for execution failure by hallucinating an answer. For example, in the \textit{Brutal} song-length case, the model outputs 143 seconds without reliable SPARQL support.
+\end{itemize}
