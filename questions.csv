@@ -1,0 +1,65 @@
+question,file_source
+Which works have been composed by Mozart ?,q001.rq
+Which works have been composed in 1836 ?,q002.rq
+Which works have been written for string quartet?,q003.rq
+What works are linked to a particular work and what type of link connect them?,q004.rq
+Retrieve all the works that have been written by German composers between 1800 and 1850 and performed at the Royal Albert Hall,q005.rq
+Give me the works written for oboe and orchestra after the 1900,q006.rq
+"Give me the works written for violin, clarinet and piano (strictly)",q007.rq
+"Give me the works of suite genre that involves at least violin, clarinet and piano",q008.rq
+"Give me the works of chamber genre that involves at most violin, clarinet and piano",q009.rq
+"Give me the works of chamber genre that involves at most violin, clarinet and piano, except from the sonatas for violin and piano and clarinet and piano",q010.rq
+Give me all the mélodies (French art songs) for baritone voice between 1870 and 1913.,q011.rq
+Give me all titles of chamber opera that foresee at least one cello,q012.rq
+Give me all the sacred vocal music for choir written since 1945,q013.rq
+Give me all the operas of which the composer is also the librettist,q014.rq
+Give me a list of mélodies (French art songs) from the 20th century,q015.rq
+Give me a list of works of genre sonata composed in the 19th century by Norwegian composers,q016.rq
+Give me the list of the works of which at least one of the dedicatees is also a performer of the work,q017.rq
+Give me the list of all symphonies that include 5 or more movements,q018.rq
+Give me the list of works composed by Mozart in the last 5 years of his life,q019.rq
+Give me a cycle of mélodies (French art songs) whose author of text is the same for each piece.,q020.rq
+"Give me a list of works composed between 1860 and 1880, for small formation (maximum 6 instrumentalists) including 1 piano",q021.rq
+Give me the list of works of J.S. Bach between BWV 30 and BWV 70,q022.rq
+Give me pairs of works and components that together share a single piano casting.,q023.rq
+Give me all works for piano based on works of Schubert,q024.rq
+Find musical works that are specifically categorized by their geographical context.,q025.rq
+Give me the name and the birth date of artists that played the oboe,q026.rq
+Give me all the performances in which a composer interprets his or her works,q027.rq
+Give me all the performances in which a composer directs one of his works,q028.rq
+Give me the list of concerts given at the Philharmonie de Paris in which the orchestra is directed by the solo violin,q029.rq
+Give me the list of concerts performed at the Abbaye Royale du Parc-aux-Dames,q030.rq
+Give me all the works interpreted on at least one mop different from the casting of the work,q031.rq
+Give me the artists that have been recorded more than 5 times by Radio France,q032.rq
+Give me the name of the vocal soloist most recorded by Radio France in 2014,q033.rq
+Give me the list of all the concerts recorded by Radio France at the Philharmonie de Paris between 1995 and 2014,q034.rq
+Retrieve the tracks and corresponding tracksets for all recordings of the opera Don Giovanni by Mozart,q035.rq
+Give me all the recordings of Don Giovanni by Mozart,q036.rq
+Give me pairs of recorded tracksets that are composed with the same key,q037.rq
+Give me all the recordings of opera whose duration is greater than 1 hour,q038.rq
+List all Symphonies composed by Louise Farrenc.,q039.rq
+What works have been written specifically for clavichord?,q040.rq
+Show me the Operas composed by Giuseppe Verdi in 1853.,q041.rq
+How many works did Claude Debussy composed?,q042.rq
+Where is Mozart born?,q043.rq
+Find works with 'Moonlight' in the title.,q044.rq
+Which works were composed on 31st December 1799?,q045.rq
+How many works have been composed in 1800?,q046.rq
+When was Maria Callas born?,q047.rq
+List musicians born in Turin.,q048.rq
+Which artists are known for playing the Trumpet?,q049.rq
+List artists who died in 2015.,q050.rq
+Give me name and birth date of artists that played a cello in 21th century,q051.rq
+List works composed by Ravel involving a Piano.,q052.rq
+Find artists with 'Simone' in their name.,q053.rq
+"Performances performed in January 2016, at the Philharmonie de Paris",q054.rq
+Give me the titles of all tracks that are recordings of work symphonie n° 5.,q055.rq
+List works composed by Erik Satie.,q056.rq
+Give me performances held in Paris.,q057.rq
+Give me works with genre Sonata.,q058.rq
+Give me recordings of the work Bolero.,q059.rq
+Give me works composed by Tommaso Albinoni in C major.,q060.rq
+Give me performances between 2000 and 2001.,q061.rq
+List tracks from publications(works) with title 'Variations Goldberg'.,q062.rq
+List the 5 longest tracks titled 'Kyrie'.,q063.rq
+"Count the number of tracks for each genre, showing the top 5.",q064.rq
