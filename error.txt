@@ -4,6 +4,13 @@ Based on the available human verification notes, we observe four main patterns:
     For example, for question \textit{who is the publisher of Writers & Lovers book?}, Text-to-SPARQL model has searched the correct entity, but Wikidata lacks the publisher edge(P123) to connect both entities.
     , while \textit{Did John Prine win a Grammy for Fair & Square?} has the relevant Grammy relation but lacks the \texttt{for work(P1686)} qualifier to indicate the album name needed to connect the award to the album.
 
+    \item \textbf{no_sparql_generated are due to ambiguoius quesions} For example [Who is their current manufacturer of of their uniform kits?] this querstion is dependent on context.All cases are due to this.
+
+     \item \textbf{\sparql_execution_failed (execution)-> time-out / missing entity(very rare)} 40% cases are due to time-out, succeed after re-run. 20% cases(question What is the length of the Brutal song of Sour album?) are due to GRASP hallucinating an answer from its innert konwledge. 40% cases are due to missing entity[question 'Who played the character of Sevika in Arcane?', Missing entity for 'Sevika' in `https://en.wikipedia.org/wiki/Arcane_(TV_series)`. Add this URL in footmnote].
+
+\item \textbf{sparql_execution_failed (preprocessing) -> poor SPARQL quality} In this case, all cases are because the generated SPARQLdoes not follow the grammar(syntax error). For example, the generated SPARQL is missing a predicate, so it is not a complete subject predicate object triple pattern.
+
+
     \item \textbf{Wrong property or path:} 20\% of verified errors come from plausible but incorrect SPARQL paths. For example, the 93rd Academy Award case is a false negative because the correct path requires \texttt{award received} plus \texttt{statement is subject of}; the Stephen Sommers case fails because the model searches outgoing edges from the wrong side of the relation.
 
     \item \textbf{Execution noise:} 20\% of verified errors are not semantic failures. They return the correct answer after rerunning or produce the same answer despite an execution failure. These cases should be filtered before treating them as evidence of KG incompleteness.
