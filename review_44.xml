@@ -1,0 +1,175 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  == For your convenience, this form can be processed by EasyChair
+  == automatically. You can fill out this form offline and then upload it
+  == to EasyChair. Several review forms can be uploaded simultaneously.
+  == You can modify your reviews as many times as you want.
+  == 
+  == When filling out the review form please mind the following rules:
+  == 
+  == (1) Blocks such as this are comments. EasyChair will ignore them.
+  ==     Do not write any text into these blocks as it will be ignored.
+  ==     You can add comments to the review form or remove them.
+  == (2) Write only into the tags where instructed. Do not modify any
+  ==     tags and attributes, or the review will become unusable and will
+  ==     be rejected by EasyChair.
+  -->
+<review id=":7639068::3680753"
+        submission="44"
+        title="Bridging the Gap Between Natural Language and Semantic Web: Investigating LLM Agents for Text-to-SPARQL Generation"
+        authors="(anonymous)"
+        pc_member="Raphael Troncy">
+
+<!--     Please assign your marks and comments according to what the authors have been asked to write about, as described in the call for papers. For each criteria, you can explain in the text box why you assign the given value.	     -->
+
+<field id="787267" name="Overall evaluation">
+  <!--
+    == Please provide a detailed review, including a justification for your
+    == scores. Both the score and the review text are required.
+    -->
+  <text required="required">
+  <!--
+    == Enter the text for the field
+    ==   Overall evaluation
+    == below. The text is required.
+    -->
+
+
+
+
+
+  </text>
+  <score>
+  <!--
+    == Select your choice from the options below and write its number below.
+    ==
+    == -3 - strong reject
+    == -2 - reject
+    == -1 - weak reject
+    == 0 - borderline paper
+    == 1 - weak accept
+    == 2 - accept
+    == 3 - strong accept
+    -->
+    
+  </score>
+</field>
+<field id="787268" name="Reviewer's confidence">
+  <!--
+    == 
+    -->
+  <score>
+  <!--
+    == Select your choice from the options below and write its number below.
+    ==
+    == 1 - (none)
+    == 2 - (low)
+    == 3 - (medium)
+    == 4 - (high)
+    == 5 - (expert)
+    -->
+    
+  </score>
+</field>
+<field id="787269" name="Confidential remarks for the program committee">
+  <!--
+    == If you wish to add any remarks intended only for PC members please write
+    == them below. These remarks will only be seen by the PC members having access
+    == to reviews for this submission. They will not be sent to the authors. This
+    == field is optional.
+    -->
+  <text optional="optional">
+  <!--
+    == Enter the text for the field
+    ==   Confidential remarks for the program committee
+    == below. The text is optional.
+    -->
+
+
+
+
+
+  </text>
+</field>
+<field id="788571" name="Overview">
+  <!--
+    == Provide a short summary of the contribution.
+    -->
+  <text required="required">
+  <!--
+    == Enter the text for the field
+    ==   Overview
+    == below. The text is required.
+    -->
+
+
+
+
+
+  </text>
+</field>
+<field id="788572" name="Relevance">
+  <!--
+    == Is the paper relevant to the conference and the call for papers? Please
+    == check the author's argumentation in field "Conference and track fit" that
+    == they submitted along with the paper as well as the call for papers. We are
+    == looking for novel and significant research contributions addressing
+    == theoretical, analytical and empirical aspects of the Semantic Web. While we
+    == do encourage contributions to research at the intersection of the Semantic
+    == Web and other scientific disciplines, they should still be within the
+    == topics of interest of the conference. So please be open minded when
+    == answering this question and provide an explanation in the text field.
+    -->
+  <text required="required">
+  <!--
+    == Enter the text for the field
+    ==   Relevance
+    == below. The text is required.
+    -->
+
+
+
+
+
+  </text>
+  <score>
+  <!--
+    == Select your choice from the options below and write its number below.
+    ==
+    == 1 - very poor
+    == 2 - poor
+    == 3 - fair
+    == 4 - good
+    == 5 - excellent
+    -->
+    
+  </score>
+</field>
+<field id="796607" name="Generative AI and Confidentiality Attestation">
+  <!--
+    == This is a mandatory field. More information on the policy on the use of
+    == Generative AI by reviewers is available in the Review Guidelines:
+    == https://iswc2026.semanticweb.org/#/guidelines/review
+    -->
+  <score>
+  <!--
+    == Select your choice from the options below and write its number below.
+    ==
+    == 0 - no
+    == 1 - yes
+    -->
+    
+  </score>
+</field>
+<reviewer>
+  <!--
+    == If the review was written by (or with the help from) a subreviewer
+    == different from the PC member in charge, add information about
+    == the subreviewer below. Write subreviewer's first name, last name
+    == and email between the tags below.
+    -->
+  <first_name>  </first_name>
+  <last_name>  </last_name>
+  <email>  </email>
+</reviewer>
+</review>
